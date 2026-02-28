@@ -850,8 +850,7 @@ def upload_file():
                     if not is_nature_image(predicted_species):
                         return jsonify({
                             'success': False,
-                            'message': 'The uploaded image does not appear to be a nature/wildlife photo. '
-                                       'Please upload an image of an animal, plant, or natural landscape.'
+                            'message': '⚠️ This image does not appear to contain wildlife. Please upload a clear photo of an animal, plant, or natural landscape and try again.'
                         }), 400
                 else:
                     predicted_species = "Cheetah (Demo Prediction - AI Model Not Loaded)"

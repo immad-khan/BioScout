@@ -141,21 +141,26 @@
         .eye-btn {
             position: absolute;
             right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
+            /* Adjust position to center vertically within the INPUT field, not the wrapper */
+            top: auto;
+            bottom: 5px;
+            height: 48px; /* Match input height roughly */
+            display: flex;
+            align-items: center;
             background: none;
             border: none;
-            color: #111;
+            color: rgba(255, 255, 255, 0.7); /* Lighter color for visibility on dark bg */
             cursor: pointer;
             font-size: 1.1rem;
             padding: 0;
             width: auto;
             margin: 0;
+            z-index: 10;
         }
 
         .eye-btn:hover {
-            color: #333;
-            transform: translateY(-50%);
+            color: #fff;
+            transform: none;
             box-shadow: none;
         }
 

@@ -210,9 +210,20 @@
             border: 1px solid #1e4620;
         }
         .error {
-            background-color: rgba(114, 28, 36, 0.2);
-            color: #e84118;
-            border: 1px solid #721c24;
+            background-color: rgba(231, 76, 60, 0.15);
+            color: #ff6b6b;
+            border: 2px solid #ff4757;
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(255, 71, 87, 0.2);
+            letter-spacing: 0.5px;
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
         }
         .loading {
             display: none;
