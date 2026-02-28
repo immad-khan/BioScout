@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioScout - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #050505; /* Deep dark background */
+        }
+
+        /* Main Container: Split Layout */
+        .split-container {
+            display: flex;
+            width: 900px;
+            height: 550px;
+            background: #000;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border-radius: 4px; /* Minimal radius */
+        }
+
+        /* LEFT SIDE: Form (Black) */
+        .left-panel {
+            flex: 1;
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background-color: #000;
+            color: #fff;
+            position: relative;
+        }
+
+        /* RIGHT SIDE: Image/GIF */
+        .right-panel {
+            flex: 1;
+            background-image: url("{{ url_for('static', filename='images/login_bg.gif') }}"); /* Using GIF as requested */
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        /* Overlay on image */
+        .right-panel::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.2); 
+        }
+        
+        /* Optional: Use the GIF as full background behind everything? 
+           User showed split screen example (black left, nature right). 
+           Let's match the SPLIT screen screenshot provided. */
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 30px;
+            margin-top: -20px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 25px;
+        }
+        
+        .field-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #666;
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #333;
+            padding: 10px 0;
+            color: #fff;
+            font-size: 1rem;
+            font-family: 'Poppins', sans-serif;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-bottom-color: #2ecc71;
+        }
+
+        button.btn-submit {
+            width: 100%;
+            padding: 15px;
+            background: #44bd32; /* Flat green like reference */
+            border: none;
+            border-radius: 30px;
+            color: #000;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        button.btn-submit:hover {
+            background: #2ecc71;
+            box-shadow: 0 5px 20px rgba(46,204,113,0.3);
+        }
+
+        .links {
+            margin-top: 30px;
+            font-size: 0.75rem;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+        .links a {
+            color: #888;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .links a:hover { color: #fff; }
+
+        .social-login {
+            margin-top: 40px;
+            text-align: center;
+        }
+        .social-circle {
+            display: inline-flex;
+            width: 35px; height: 35px;
+            border: 1px solid #333;
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            margin: 0 5px;
+            color: #666;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .social-circle:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        /* Password Eye adjustment */
+        .password-wrapper { position: relative; }
+        .eye-btn {
+            position: absolute;
+            right: 0;
+            top: 28px; /* Adjusted for this layout */
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+        }
+        .eye-btn:hover { color: #fff; }
+
+        /* Notification styles adjusted for black bg */
+        .flash-messages { margin-bottom: 20px; }
+        .alert { 
+            padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 0.8rem; 
+        }
+        .alert-error {
+            background: rgba(231, 76, 60, 0.1); border: 1px solid #e74c3c; color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+
+<div class="split-container">
+    <!-- LEFT: Login Form -->
+    <div class="left-panel">
+        <h1>Login</h1>
+        <p class="subtitle">Welcome back to BioScout</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('login') }}" method="POST">
+            <div class="input-group">
+                <label class="field-label">Email</label>
+                <input type="email" name="email" required>
+            </div>
+            
+            <div class="input-group password-wrapper">
+                <label class="field-label">Password</label>
+                <input type="password" name="password" id="password" required>
+                <button type="button" class="eye-btn" onclick="togglePassword()">&#128065;</button>
+            </div>
+
+            <div class="links">
+                <label style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+                    <input type="checkbox" style="width:auto;margin:0;"> Remember me
+                </label>
+                <a href="#">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="btn-submit">Login</button>
+        </form>
+
+        <div class="social-login">
+            <p style="font-size:0.7rem; color:#444; margin-bottom:10px;">OR LOGIN WITH</p>
+            <div class="social-circle">f</div>
+            <div class="social-circle">G</div>
+            <div class="social-circle">t</div>
+        </div>
+        
+        <div style="margin-top: 20px; font-size: 0.75rem; text-align: center; color: #555;">
+            Don't have an account? <a href="{{ url_for('signup') }}" style="color:#fff;">Sign Up</a>
+        </div>
+    </div>
+
+    <!-- RIGHT: Image/GIF Panel -->
+    <div class="right-panel">
+        <!-- Badge top right like in example -->
+        <div style="position:absolute; top:30px; right:0; background:#44bd32; color:#000; 
+                    padding:10px 20px; font-weight:700; font-size:0.8rem; letter-spacing:1px;
+                    text-transform:uppercase;">
+            BioScout
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePassword() {
+        const pw = document.getElementById('password');
+        pw.type = pw.type === 'password' ? 'text' : 'password';
+    }
+</script>
+
+</body>
+</html>

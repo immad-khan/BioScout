@@ -570,7 +570,7 @@ def signup():
             flash('Failed to send verification email. Please try again.', 'error')
             return redirect(url_for('signup'))
     
-    return render_template('signup.html')
+    return render_template('login.html', mode='signup')
 
 @app.route('/verify-otp', methods=['GET', 'POST'])
 def verify_otp():
@@ -634,7 +634,7 @@ def login():
             flash('Login Unsuccessful. Please check email and password.', 'error')
             return redirect(url_for('login'))
     
-    return render_template('login.html')
+    return render_template('login.html', mode='login')
 
 @app.route('/logout')
 @login_required
