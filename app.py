@@ -533,6 +533,10 @@ def signup():
         email = request.form.get('email')
         password = request.form.get('password')
 
+        if not username or not email or not password:
+            flash('Please fill out all fields.', 'error')
+            return redirect(url_for('signup'))
+
         if users_collection.find_one({"email": email}):
             flash('Email already exists. Please login instead.', 'error')
             return redirect(url_for('signup'))
@@ -924,13 +928,14 @@ def sighting_locations():
         if observations_collection is not None:
             cursor = observations_collection.find(
                 {},
-                {"latitude": 1, "longitude": 1, "species_name": 1, "location": 1, "city": 1, "date_observed": 1, "_id": 0}
+                {"latitude": 1, "longitude": 1, "species_name": 1, "predicted_species": 1, "location": 1, "city": 1, "date_observed": 1, "_id": 0}
             )
             for doc in cursor:
                 spots.append({
                     "lat": doc.get("latitude"),
                     "lng": doc.get("longitude"),
                     "species": doc.get("species_name", "Unknown"),
+                    "predicted_species": doc.get("predicted_species", "Unknown"),
                     "location": doc.get("location", ""),
                     "city": doc.get("city", ""),
                     "date": doc.get("date_observed", "")

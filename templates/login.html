@@ -306,12 +306,15 @@
             <input type="text" name="username" placeholder="Full Name" required />
             <input type="email" name="email" placeholder="Email" required />
             
-            <!-- Combined password field with eye toggle? Let's just keep it simple for now or copy logic -->
+            <!-- Combined password field with eye toggle -->
             <div style="position:relative; width:100%;">
-                <input type="password" name="password" id="signup_password" placeholder="Password" required />
+                <input type="password" name="password" id="signup_password" placeholder="Password" required oninput="validatePassword()" />
+                <div id="password-validation-msg" style="color: #e74c3c; font-size: 0.8rem; text-align: left; margin-top: 5px; display: none;">
+                    Password must contain at least 8 characters, including uppercase, lowercase, number, and special character.
+                </div>
             </div>
 
-            <button type="submit">Sign Up</button>
+            <button type="submit" id="signup_btn">Sign Up</button>
         </form>
     </div>
 
@@ -366,6 +369,9 @@
     const signUpButton = document.getElementById('signUp');
     const signInButton = document.getElementById('signIn');
     const container = document.getElementById('container');
+    const signupPassword = document.getElementById('signup_password');
+    const passwordValidationMsg = document.getElementById('password-validation-msg');
+    const signupBtn = document.getElementById('signup_btn');
 
     signUpButton.addEventListener('click', () => {
         container.classList.add("right-panel-active");
@@ -379,6 +385,27 @@
         const pw = document.getElementById(id);
         if (pw) {
             pw.type = pw.type === 'password' ? 'text' : 'password';
+        }
+    }
+
+    function validatePassword() {
+        const p = signupPassword.value;
+        const valid = p.length >= 8 && 
+                      /[A-Z]/.test(p) && 
+                      /[a-z]/.test(p) && 
+                      /[0-9]/.test(p) && 
+                      /[!@#$%^&*(),.?":{}|<>]/.test(p);
+        
+        if (p.length > 0 && !valid) {
+            passwordValidationMsg.style.display = 'block';
+            signupBtn.disabled = true;
+            signupBtn.style.opacity = '0.5';
+            signupBtn.style.cursor = 'not-allowed';
+        } else {
+            passwordValidationMsg.style.display = 'none';
+            signupBtn.disabled = false;
+            signupBtn.style.opacity = '1';
+            signupBtn.style.cursor = 'pointer';
         }
     }
 </script>

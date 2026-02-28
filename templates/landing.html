@@ -1332,7 +1332,14 @@
             dot.style.top  = (pos.y / SVG_H * 100) + '%';
             const tip = document.createElement('span');
             tip.className = 'dot-tooltip';
-            tip.textContent = `${s.species} — ${s.location}${s.city ? ', ' + s.city : ''} (${s.date})`;
+            
+            // Format tooltip text: if a predicted species is available and valid from DB, use it instead of user input
+            let displaySpecies = s.species;
+            if (s.predicted_species && s.predicted_species !== "Unknown" && s.predicted_species !== "No image provided for prediction" && s.predicted_species !== "AI Prediction Failed") {
+                displaySpecies = s.predicted_species.split(';')[0].trim();
+            }
+
+            tip.textContent = `${displaySpecies} — ${s.location}${s.city ? ', ' + s.city : ''} (${s.date})`;
             dot.appendChild(tip);
             mapWrap.appendChild(dot);
         }
