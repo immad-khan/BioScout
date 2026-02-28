@@ -1,0 +1,70 @@
+body {
+    color: white;
+    /* Adjusted path: ../images/ to go up one level from css/ then into images/ */
+    background-image: url("../images/map.jpg");
+    background-size: 100% 100vh;
+    background-repeat: no-repeat;
+}
+
+h1 {
+    font-size: 50px;
+}
+
+button {
+    background-color: #333333;
+    color: white;
+    border: none;
+    font-family: Arial, Sans-Serif;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border: 2px solid;
+    font-weight: bold;
+    border-color: #FFCCCC #FFCCCC #330000 #330000;
+}
+
+button:hover {
+    background-color: red;
+    border-color: #FFCCCC #FFCCCC #330000 #330000;
+}
+
+.box {
+    position: absolute;
+    top: 80%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.box span {
+    display: block;
+    width: 20px;
+    height: 20px;
+    border-bottom: 1px solid #fff;
+    border-right: 1px solid #fff;
+    transform: rotate(45deg);
+    margin: -10px;
+    animation: animate 2s infinite;
+}
+
+.box span:nth-child(2) {
+    animation-delay: -0.2s;
+}
+
+.box span:nth-child(3) {
+    animation-delay: -0.4s;
+}
+
+@keyframes animate {
+    0% {
+        opacity: 0;
+        transform: rotate(45deg) translate(-20px, -20px);
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: rotate(45deg) translate(20px, 20px);
+    }
+}
+/* Make sure there are no extra closing curly braces, I removed one that seemed out of place */

@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BioScout — Discover Islamabad's Wildlife</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            scroll-behavior: auto; /* we handle smoothness via rAF */
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #050505;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* ===== LOADER ===== */
+        #loader {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #050505;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        #loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .loader-ring {
+            width: 56px; height: 56px;
+            border: 3px solid rgba(255,255,255,0.08);
+            border-top-color: #2ecc71;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes shimmer { to { background-position: 200% center; } }
+        .loader-text {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        #loader-progress {
+            margin-top: 12px;
+            width: 180px;
+            height: 3px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        #loader-bar {
+            height: 100%;
+            width: 0%;
+            background: #2ecc71;
+            border-radius: 3px;
+            transition: width 0.15s ease;
+        }
+
+        /* ===== TOP NAV ===== */
+        .topnav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 40px;
+            background: linear-gradient(to bottom, rgba(5,5,5,0.9), transparent);
+            pointer-events: none;
+        }
+        .topnav * { pointer-events: auto; }
+        .topnav-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        .topnav-logo span { color: #2ecc71; }
+        .topnav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+        }
+        .topnav-links a {
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            transition: color 0.3s;
+        }
+        .topnav-links a:hover { color: #fff; }
+
+        /* ===== SCROLL CONTAINER ===== */
+        .scroll-container {
+            position: relative;
+            height: 500vh; /* 5x viewport for generous scroll room */
+        }
+
+        /* ===== STICKY CANVAS ===== */
+        .canvas-wrap {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #frame-canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* ===== TEXT OVERLAYS ===== */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100vh;
+            display: flex;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.05s ease;
+        }
+        .overlay.active { opacity: 1; }
+
+        .overlay-inner {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 60px;
+        }
+
+        /* Section 1 — Hero Center */
+        .s1 .overlay-inner {
+            text-align: center;
+        }
+        .s1 h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(3rem, 7vw, 6.5rem);
+            font-weight: 700;
+            line-height: 1.05;
+            letter-spacing: -2px;
+            color: rgba(255,255,255,0.92);
+            margin-bottom: 16px;
+        }
+        .s1 p {
+            font-size: clamp(1rem, 2vw, 1.35rem);
+            font-weight: 300;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Section 2 — Left */
+        .s2 .overlay-inner { text-align: left; padding-right: 50%; }
+        .s2 h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2rem, 4.5vw, 4rem);
+            font-weight: 700;
+            line-height: 1.1;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 14px;
+        }
+        .s2 p {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: rgba(255,255,255,0.5);
+            max-width: 420px;
+        }
+
+        /* Section 3 — Right */
+        .s3 .overlay-inner { text-align: right; padding-left: 50%; }
+        .s3 h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2rem, 4.5vw, 4rem);
+            font-weight: 700;
+            line-height: 1.1;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 14px;
+        }
+        .s3 p {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            color: rgba(255,255,255,0.5);
+            margin-left: auto;
+            max-width: 420px;
+        }
+
+        /* Section 4 — CTA Center */
+        .s4 .overlay-inner {
+            text-align: center;
+        }
+        .s4 h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2.5rem, 5.5vw, 5rem);
+            font-weight: 700;
+            line-height: 1.1;
+            color: rgba(255,255,255,0.92);
+            margin-bottom: 12px;
+        }
+        .s4 p {
+            font-size: 1.05rem;
+            color: rgba(255,255,255,0.45);
+            margin-bottom: 32px;
+        }
+        .cta-btn {
+            display: inline-block;
+            padding: 18px 55px;
+            /* Almost black gradient with a hint of dark military green - minimal and blends in */
+            background: linear-gradient(135deg, #0f1c11, #050505);
+            background-size: 200% 200%;
+            /* Subtle text color, not stark white */
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 600;
+            font-size: 1.05rem;
+            border-radius: 50px;
+            text-decoration: none;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.4s ease;
+            pointer-events: auto;
+            /* Very subtle border */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            /* Minimal shadow */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        .cta-btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transition: 0.6s;
+        }
+        .cta-btn:hover::before {
+            left: 100%;
+        }
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            /* Slightly brighter/greener on hover but still dark */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            background: linear-gradient(135deg, #16301a, #0a0a0a);
+            color: #fff;
+            border-color: rgba(255,255,255,0.25);
+        }
+
+        /* ===== STATS BAR (at the very bottom after scroll) ===== */
+        .stats-section {
+            position: relative;
+            z-index: 5;
+            background: #0a0a0a;
+            padding: 80px 40px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 1100px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .stat-item h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            color: #2ecc71;
+            margin-bottom: 6px;
+        }
+        .stat-item p {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255,255,255,0.2);
+            font-size: 0.78rem;
+            letter-spacing: 1px;
+        }
+
+        /* ===== SIGHTING MAP ===== */
+        .map-section {
+            position: relative;
+            z-index: 5;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 60px 40px 40px;
+            text-align: center;
+        }
+        .map-section h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.4rem;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .map-section .map-subtitle {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .map-wrap {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            max-width: 800px;
+        }
+        .map-wrap svg { width: 100%; height: auto; }
+        #mapWrap svg .shape {
+            fill: rgba(46,204,113,0.06);
+            stroke: rgba(46,204,113,0.2);
+            stroke-width: 0.7;
+            transition: fill 0.3s;
+        }
+        #mapWrap svg .shape:hover {
+            fill: rgba(46,204,113,0.22);
+        }
+        #mapWrap svg path[id$="_Border"] {
+            fill: none;
+            stroke: rgba(46,204,113,0.35);
+            stroke-width: 1;
+        }
+        /* Pulsing red dot */
+        .sighting-dot {
+            position: absolute;
+            width: 12px; height: 12px;
+            background: #e74c3c;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 3;
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+        .sighting-dot::after {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 2px solid rgba(231,76,60,0.4);
+            animation: dotRing 2s ease-in-out infinite;
+        }
+        @keyframes dotPulse {
+            0%, 100% { transform: translate(-50%,-50%) scale(1); }
+            50% { transform: translate(-50%,-50%) scale(1.3); }
+        }
+        @keyframes dotRing {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 0; transform: scale(2); }
+        }
+        .dot-tooltip {
+            position: absolute;
+            bottom: 18px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .sighting-dot:hover .dot-tooltip { opacity: 1; }
+
+        /* ===== MOBILE ===== */
+        @media (max-width: 768px) {
+            .topnav { padding: 16px 20px; }
+            .topnav-links { gap: 16px; }
+            .topnav-links a { font-size: 0.75rem; }
+            .overlay-inner { padding: 0 24px !important; }
+            .s2 .overlay-inner { padding-right: 10% !important; }
+            .s3 .overlay-inner { padding-left: 10% !important; }
+            .s2 p, .s3 p { max-width: 100%; }
+            .stats-section { padding: 50px 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOADER -->
+    <div id="loader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Loading Experience</div>
+        <div id="loader-progress"><div id="loader-bar"></div></div>
+    </div>
+
+    <!-- NAV -->
+    <nav class="topnav">
+        <a href="{{ url_for('landing') }}" class="topnav-logo">Bio<span>Scout</span></a>
+        <ul class="topnav-links">
+            <li><a href="{{ url_for('serve_form') }}">Submit</a></li>
+            <li><a href="{{ url_for('view_observations') }}">Observations</a></li>
+            <li><a href="{{ url_for('serve_qa_page') }}">Q&A</a></li>
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('my_observations') }}">My Submissions</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login') }}">Login</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+
+    <!-- SCROLL CONTAINER -->
+    <div class="scroll-container" id="scroll-container">
+        <div class="canvas-wrap">
+            <canvas id="frame-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- TEXT OVERLAYS (fixed, controlled by JS) -->
+    <div class="overlay s1" id="overlay-1">
+        <div class="overlay-inner">
+            <p style="
+                font-size: 1.4rem;
+                color: #fff;
+                letter-spacing: 6px;
+                text-transform: uppercase;
+                margin-bottom: 14px;
+                font-weight: 700;
+                text-shadow: 0 0 20px rgba(46,204,113,0.8), 0 0 40px rgba(46,204,113,0.4), 0 0 80px rgba(46,204,113,0.2);
+                background: linear-gradient(90deg, #2ecc71, #a8ff78, #2ecc71);
+                background-size: 200% auto;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                animation: shimmer 3s linear infinite;
+            ">I'M MAD presents</p>
+            <h1>BioScout</h1>
+            <p>Discover Islamabad's Wildlife</p>
+        </div>
+    </div>
+
+    <div class="overlay s2" id="overlay-2">
+        <div class="overlay-inner">
+            <h2>Margalla Hills<br>Biodiversity</h2>
+            <p>Home to 600+ plant species, 250 bird species, and 38 mammal species — an ecosystem worth protecting.</p>
+        </div>
+    </div>
+
+    <div class="overlay s3" id="overlay-3">
+        <div class="overlay-inner">
+            <h2>AI-Powered<br>Identification</h2>
+            <p>Upload a photo and our deep learning model classifies species in seconds. Every observation feeds the conservation database.</p>
+        </div>
+    </div>
+
+    <div class="overlay s4" id="overlay-4">
+        <div class="overlay-inner">
+            <h2>Explore. Document.<br>Conserve.</h2>
+            <p>Join the community of citizen scientists.</p>
+            <a href="{{ url_for('serve_form') }}" class="cta-btn">Start Observing →</a>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-section">
+        <div class="stat-item">
+            <h3>600+</h3>
+            <p>Plant Species</p>
+        </div>
+        <div class="stat-item">
+            <h3>250+</h3>
+            <p>Bird Species</p>
+        </div>
+        <div class="stat-item">
+            <h3>38</h3>
+            <p>Mammal Species</p>
+        </div>
+        <div class="stat-item">
+            <h3>24/7</h3>
+            <p>AI Classification</p>
+        </div>
+    </div>
+
+    <!-- SIGHTING MAP -->
+    <div class="map-section" id="sighting-map">
+        <h2>Sighting Map</h2>
+        <p class="map-subtitle">Real-time observations plotted across Pakistan</p>
+        <div class="map-wrap" id="mapWrap">
+            <!-- Detailed Pakistan district-level map -->
+            <svg id="pakistanMap" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1628 1544">
+
+      <g>
+        <a id="state_isl" class="state">
+          <path id="Islamabad" class="shape" d="m 1246.3,392.4 -3.2,-4.2 -2.8,0.2 -10.6,-7.8 -25.6,9.2 -11.8,3.6 6.4,13.8 18,-8.8 6.8,10.2 -3.8,3 6,4.8 11.2,-7.2 1.6,-9 z" />
+        </a>
+      </g>
+
+      <g id="Balochistan" transform="translate(-27.1,-28.1)">
+        <a id="state_Ziarat" class="state">
+          <path id="Ziarat" class="shape" d="m 711.2,780.9 -9.4,-2.6 -6.6,8 -5,0 -2.4,-6.2 -6.2,-1.8 -14.4,11.4 -7.2,9.8 4.4,9 5.4,2.8 1,-4.2 29,10.2 18.6,-11.2 -4,-5.6 7,-7.8 0,-6.2 -8.2,0 z" />
+        </a>
+
+        <a id="state_Zhob" class="state">
+          <path id="Zhob" class="shape" d="m 729.2,682.9 6.2,24 16.6,5 47.2,-19 12,4.4 1.8,26.6 38.8,-2.6 16.2,12.2 11.6,-2.4 -10.8,23.2 -22.2,10 8.4,9.6 42.4,22.8 -9,-13.2 7.6,-20.6 18.8,-26.4 0.4,-36.6 21,5.6 5,-12.2 -34,-20.2 -21.4,-27.8 -26.2,-12.4 -7.8,16.8 -10,8.8 -7.2,-2.2 -5.2,5 -9.2,-1 -8.8,-9.8 -1.4,-8.6 -6.2,-0.6 -7,-6 -13.8,7.4 -14.6,0.8 -11.8,-9 -10.4,15.6 -20,12 12.2,11.8 z"/>
+        </a>
+
+        <a id="state_Washuk" class="state">
+          <path id="Washuk" class="shape" d="m 407.8,1088.5 14.2,25.8 -7.8,14 26.4,41 -30.2,16.2 -26.8,-33.8 -31.4,35.4 -28.2,-32.2 -65.8,8 -24,5.6 -16,-4.8 6.8,-36.2 -8,-53.8 54,-32.4 59.2,-6.4 88.6,-40.2 -6.2,45.8 4.2,26.2 z" />
+    </a>
+
+        <a id="state_Sibi" class="state">
+          <path id="Sibi" class="shape" d="m 692.6,883.9 24,11 13.8,29.4 27.4,-3.8 -5.8,-7 11.4,-16.8 -26.8,-12 10.6,-23.2 37.8,-12.8 -33,-27.6 -73,33.2 7.8,3 z" />
+    </a>
+
+        <a id="state_Sheerani" class="state">
+          <path id="Sheerani" class="shape" d="m 925.6,621.3 -7.2,-4.6 3,-9.6 -16.8,4.6 -10.6,11.6 -21.8,-1 -12.6,10.6 26.2,12.4 21.4,27.8 34,20.2 -2.6,-16.8 -8.6,-5.2 2.4,-43.8 -7.6,5.2 -3,-3.2 z" />
+        </a>
+
+        <a id="state_Quetta" class="state">
+          <path id="Quetta" class="shape" d="m 664.4,808.5 -4.4,-9 -7.8,1.4 -5.4,6.8 -12,-16.6 -7,0.4 -14.2,33.8 -19.8,-2 -6.6,7 -8.8,-3.4 -14.4,12.4 11.8,9.6 -10.6,13.2 29.4,6.4 20,-36.2 12,13.2 19.8,-5.8 1.2,-13.2 19.6,-6.4 2.6,-8.8 z" />
+        </a>
+
+        <a id="state_Pishin" class="state">
+          <path id="Pishin" class="shape" d="m 667.2,789.7 -7.2,9.8 -7.8,1.4 -5.4,6.8 -12,-16.6 -12.4,-21.2 -8.8,-4 14.8,-25.6 27.4,-1.2 14,-18.6 -0.2,-14.2 6.8,0.6 49.2,10.6 -1.4,8 -35.8,21.8 -4,5.2 8.8,5.6 -9.2,7.6 25.8,2.4 1.4,12.8 -9.4,-2.6 -6.6,8 -5,0 -2.4,-6.2 -6.2,-1.8 z"/>
+        </a>
+
+        <a id="state_Panjgur" class="state">
+          <path id="Panjgur" class="shape" d="m 440.6,1169.3 34.8,32.7 -41.8,59.8 -48,-2 -0.6,12.8 -31,12.4 -30.6,-18.8 -25.2,0.4 0,-14.8 -40.6,-0.4 -0.8,-20.2 2.2,-22.6 9,-3.6 -2.6,-23.9 6.2,-6.4 -13.4,-11.8 65.8,-8 28.2,32.2 31.4,-35.4 26.8,33.8 z" />
+        </a>
+
+        <a id="state_Nushki" class="state">
+          <path id="Nushki" class="shape" d="m 531.8,944.9 16.4,-22.4 12.6,-1.4 13.8,-33 -9.4,-26 -118.8,36.8 -2.6,58.8 -25,37 44,-13.6 25,-25.6 32.6,-14 z"/>
+        </a>
+
+        <a id="state_Naseerabad" class="state">
+          <path id="Naseerabad" class="shape" d="m 748,990.7 -14.8,-0.6 4.8,14.8 -17.4,1.6 -0.8,46.4 19.8,-5.6 16.4,-21 23.4,-3 0,-19.4 7.6,-3.2 -1.8,-35 -4.2,-4 -19,6.8 6.2,12 z" />
+        </a>
+
+        <a id="state_Musakhel" class="state">
+          <path id="Musakhel" class="shape" d="m 946.8,683.5 -5.6,9.8 -5,12.2 -21,-5.6 -0.4,36.6 -18.8,26.4 -7.6,20.6 9,13.2 20,16.4 14.8,0.2 4.2,-17.4 10.6,-20.8 -1,-9.2 12,-13.2 6.2,-0.8 -2.2,-6.2 1.2,-23.4 -2.4,-5 4,-24.8 -1.4,-17 z" />
+        </a>
+
+        <a id="state_Mastung" class="state">
+          <path id="Mastung" class="shape" d="m 679,854.3 -2.2,-6.6 9,-6 -3.6,-15.4 -12.8,1.6 -2.2,-7.8 -19.6,6.4 -1.2,13.2 -19.8,5.8 -12,-13.2 -20,36.2 -29.4,-6.4 9.4,26 -13.8,33 16.4,1.4 25.6,-31.4 5.4,20.4 19.2,-12.4 -1.4,13.4 26.8,2 4.4,-10.6 10,-20.2 -8.8,-9.4 -4,-15.2 9.4,-9.4 z"/>
+        </a>
+
+        <a id="state_Loralai" class="state">
+          <path id="Loralai" class="shape" d="m 768.8,787.1 41,-2.6 14.6,8.4 30.6,-19 42.4,22.8 20,16.4 -13,20 -7.4,-2.2 1.6,-7.8 -18.8,22.8 -34.6,7.8 -12.4,-6.4 -28,14.2 -19.8,-12.8 -33,-27.6 -33.6,-15 -4,-5.6 7,-7.8 0,-6.2 -8.2,0 -2,-5.6 26,-10.4 1.2,10.4 20,-3 z"/>
+        </a>
+
+        <a id="state_Lasbela" class="state">
+          <path id="Lasbela" class="shape" d="m 598.4,1376.6 -3.4,0.4 2.4,5.4 15.6,15.6 -5,34.4 2.4,0.8 17,-14.6 6.8,-0.6 8,-9.4 0.4,-7.2 10.6,-10.8 3.4,-18.2 20.8,-27.2 7.2,-21.8 0.6,-29.6 -22.8,-39.8 -8,-26.8 -17.8,15.2 20.2,34.8 -5.4,55 -12.2,3.4 -22,-85.8 -24.8,4.4 -27.6,-5.6 -5,16.8 9.4,52.8 -13.2,31.2 -23.6,8 -38,-1.4 -1.2,-15.2 -31.4,11.6 1.8,25.4 5.8,1 5.2,-3 4,3.2 6.8,-2.2 21.2,4.4 19,-8.6 44.4,-5.8 19,8 1.8,-0.8 -4.8,-6 2.8,-2.6 -4.2,-1.4 -2.4,1.4 -8.4,-8.2 -7.6,1 -5,6.2 -7.8,-2 2.4,-6.4 11.2,-5.2 4.4,1.4 6.2,-3 13.6,13.2 1.6,-1.6 z"/>
+        </a>
+
+        <a id="state_Kohlu" class="state">
+          <path id="Kohlu" class="shape" d="m 845.2,880.3 37,-19.6 8,-16.4 -10.4,1.6 -34.6,7.8 -12.4,-6.4 -28,14.2 -19.8,-12.8 -37.8,12.8 -10.6,23.2 26.8,12 -11.4,16.8 5.8,7 29.6,19.8 22.6,-7.4 28.6,6.6 3.6,-5 20.4,2.8 7.2,-14.4 21.2,-10.4 -7.8,-7.4 6.2,-19.4 -24.6,9.2 z"/>
+        </a>
+
+        <a id="state_Killa_Saifullah" class="state">
+          <path id="Killa_Saifullah" class="shape" d="m 711.2,671.3 15,-9.2 12.2,11.8 -9.2,9 6.2,24 16.6,5 47.2,-19 12,4.4 1.8,26.6 38.8,-2.6 16.2,12.2 11.6,-2.4 -10.8,23.2 -22.2,10 8.4,9.6 -30.6,19 -14.6,-8.4 -41,2.6 -10.4,-9.2 -20,3 -1.2,-10.4 -26,10.4 -1.4,-12.8 -25.8,-2.4 9.2,-7.6 -8.8,-5.6 4,-5.2 35.8,-21.8 1.4,-8 -49.2,-10.6 42,-16 -1.8,-8 -15.4,1.6 -6,-14.8 z"/>
+        </a>
+
+        <a id="state_Killa_Abdullah" class="state">
+          <path id="Killa_Abdullah" class="shape" d="m 628.4,740.3 27.4,-1.2 14,-18.6 -0.2,-14.2 -24.2,-2.2 -4,-10.8 -28.6,12.8 -4.8,15.8 -12,11.2 -17.2,4.2 -11,42.8 7.4,17 -11.2,42.2 14.4,-12.4 8.8,3.4 6.6,-7 19.8,2 14.2,-33.8 7,-0.4 -12.4,-21.2 -8.8,-4 z" />
+        </a>
+
+        <a id="state_Khuzdar" class="state">
+          <path id="Khuzdar" class="shape" d="m 651.4,1332.2 -12.2,3.4 -22,-85.8 -24.8,4.4 -27.6,-5.6 -3.6,-10 -13.8,21 -12.8,-25 15.8,-69.7 -16.8,7.4 -7.8,-20.6 -23.2,-9 13.2,-36.4 24.6,-24.8 15,0.2 34.4,-23.8 9,-15 -15,-13.6 11,-19.2 8.8,1.6 19,-30.6 42.8,0.6 2.4,14 -8.4,20.4 1.8,18.2 17.8,0 4,13.8 -4.6,43 -15.8,33.6 -9.6,29.2 1.4,73.3 -17.8,15.2 20.2,34.8 z"/>
+        </a>
+
+        <a id="state_Kharan" class="state">
+          <path id="Kharan" class="shape" d="m 548.2,922.5 -16.4,22.4 -11.4,-3.4 -32.6,14 -25,25.6 -44,13.6 -6.2,45.8 4.2,26.2 -9,21.8 14.2,25.8 -7.8,14 26.4,41 34.8,32.7 27.2,-59.3 13.2,-36.4 24.6,-24.8 -13.8,-37.2 24.4,-37.8 -8.2,-17 19.2,-27.8 -7.8,-18.8 6.6,-21.8 z"/>
+        </a>
+
+        <a id="state_Kech" class="state">
+          <path id="Kech" class="shape" d="m 160,1359 22,-9.4 54.4,-3 42.4,12.4 7.8,14.6 57.2,-27.6 14.8,5.4 19.2,-7 -7.8,-10.2 10.4,-34.4 13,-4.2 -8.4,-23 -31,12.4 -30.6,-18.8 -25.2,0.4 0,-14.8 -40.6,-0.4 -0.8,-20.2 -36.6,-0.6 -53,15 2,19.8 -14.2,-4.2 -2.8,7.6 -28.2,10.4 -7.2,49.2 22.2,12 6.8,-15.6 1.2,27.6 z"/>
+        </a>
+
+        <a id="state_Kalat" class="state">
+          <path id="Kalat" class="shape" d="m 603.6,1011.7 19,-30.6 42.8,0.6 22.2,-32.6 0,-26.6 -11.6,-10.2 -0.6,-10.8 -14.6,6.2 -3.6,-3.8 -4.4,10.6 -26.8,-2 1.4,-13.4 -19.2,12.4 -5.4,-20.4 -25.6,31.4 -16.4,-1.4 -6.6,21.8 7.8,18.8 -19.2,27.8 8.2,17 -24.4,37.8 13.8,37.2 15,0.2 34.4,-23.8 9,-15 -15,-13.6 11,-19.2 z"/>
+        </a>
+
+        <a id="state_Jhal_Magsi" class="state">
+          <path id="Jhal_Magsi" class="shape" d="m 678.4,993.9 -10.6,1.8 -8.4,20.4 1.8,18.2 17.8,0 4,13.8 -4.6,43 27.6,-6 -1.4,-29.2 15.2,-3 0.8,-46.4 -9.2,-15.8 1.4,-11.2 -13.6,0 -6.4,15 -8.2,-5 z" />
+        </a>
+
+        <a id="state_Jafarabad" class="state">
+          <path id="Jafarabad" class="shape" d="m 704.6,1055.9 1.4,29.2 26,-11.4 10.6,-15.2 32.6,-21.4 11.8,-14.2 66.4,-2.4 -10,-7 -29.2,2.6 -27.2,-15.4 -7.6,3.2 0,19.4 -23.4,3 -16.4,21 -19.8,5.6 z" />
+        </a>
+
+        <a id="state_Haranai" class="state">
+          <path id="Haranai" class="shape" d="m 670.8,807.1 -3.6,13 2.2,7.8 12.8,-1.6 3.6,15.4 -9,6 2.2,6.6 73,-33.2 -33.6,-15 -18.6,11.2 z" />
+        </a>
+
+        <a id="state_Gwadar" class="state">
+          <path id="Gwadar" class="shape" d="m 150.4,1397.2 -3.6,6 3.8,5.4 -24.8,2 -1.6,6.2 -10.8,-1 4.6,-17 -16.6,-1.4 10.2,-54 -2.8,-14.6 8,-0.4 22.2,12 6.8,-15.6 1.2,27.6 13,6.6 22,-9.4 54.4,-3 42.4,12.4 7.8,14.6 57.2,-27.6 14.8,5.4 -4.6,10.8 25.8,3.6 34,-11.6 48,-1.8 1.8,25.4 -7,9.2 -8.6,-1.8 -29.4,-1.6 -10.4,4.6 -2.4,7.4 4.6,4.6 -6,1.8 -4.4,-1.2 3,-4 -9,-7.2 -10.8,4.6 -17.8,-9.6 -13.4,-1.4 -4,-8.6 5.4,-2.4 1.8,-3 -11.4,-0.4 -6.2,4 3.2,3.2 2.6,-3 3.6,8.4 -14.2,0.8 -18.2,-5.8 -17.6,2.8 -10,8.8 5.2,8.2 -1.4,2.4 -40.2,-7 -10,4.4 -27,-5.2 -27,2.4 1.8,3 -14.6,7.2 5.2,5.6 -10.6,0 2.4,-9.6 -8.6,-4.2 z"/>
+        </a>
+
+        <a id="state_Dera_Bugti" class="state">
+          <path id="Dera_Bugti" class="shape" d="m 787.8,944.5 -15.4,-6.4 -3.2,5.6 11.8,18 4.2,4 1.8,35 27.2,15.4 29.2,-2.6 10,7 25,-0.8 -5,-12 11.2,-6.4 8.6,-20.2 -3.8,-10.8 21,-21.8 4.6,-24 -5.4,3 -4.8,-6.6 2.2,-7 -10.6,-3.4 4.2,-26.8 -11.2,2 -6.2,19.4 7.8,7.4 -21.2,10.4 -7.2,14.4 -20.4,-2.8 -3.6,5 -28.6,-6.6 -22.6,7.4 z"/>
+        </a>
+
+        <a id="state_Chaghai" class="state">
+          <path id="Chaghai" class="shape" d="m 330.2,1034.9 -59.2,6.4 -54,32.4 2,-29.8 -20,2.4 -21.2,-20.6 -26.4,-5.8 -31.2,-17.8 -31.6,-42.2 -12.8,-37.8 -48.2,-60.6 157.8,54.4 113.4,-11.6 51.4,13 16.2,-17 36.6,-6.6 43.4,5.2 -2.6,58.8 -25,37 z" />
+        </a>
+
+        <a id="state_Bolan" class="state">
+          <path id="Bolan" class="shape" d="m 692.6,883.9 -5.8,-26.6 -7.8,-3 -15.2,-4.6 -9.4,9.4 4,15.2 8.8,9.4 -10,20.2 3.6,3.8 14.6,-6.2 0.6,10.8 11.6,10.2 0,26.6 -22.2,32.6 2.4,14 10.6,-1.8 6.2,-4.4 8.2,5 6.4,-15 13.6,0 -1.4,11.2 9.2,15.8 17.4,-1.6 -4.8,-14.8 14.8,0.6 20.2,-10.2 -6.2,-12 19,-6.8 -11.8,-18 3.2,-5.6 15.4,6.4 -0.4,-4.2 -29.6,-19.8 -27.4,3.8 -13.8,-29.4 z"/>
+        </a>
+
+        <a id="state_Barkhan" class="state">
+          <path id="Barkhan" class="shape" d="m 890.2,844.3 -8,16.4 -37,19.6 19.6,14.6 24.6,-9.2 11.2,-2 13.4,-5.4 15.6,-22.8 8.2,-23.8 7.6,-15.2 -9.6,3.8 -3.6,-7 -14.8,-0.2 -13,20 -7.4,-2.2 1.6,-7.8 -18.8,22.8 z" />
+        </a>
+
+        <a id="state_Awaran" class="state">
+          <path id="Awaran" class="shape" d="m 561.2,1238.6 -13.8,21 -12.8,-25 15.8,-69.7 -16.8,7.4 -7.8,-20.6 -23.2,-9 -27.2,59.3 -41.8,59.8 -48,-2 -0.6,12.8 8.4,23 -13,4.2 -10.4,34.4 7.8,10.2 -19.2,7 -4.6,10.8 25.8,3.6 34,-11.6 48,-1.8 31.4,-11.6 1.2,15.2 38,1.4 23.6,-8 13.2,-31.2 -9.4,-52.8 5,-16.8 z"/>
+        </a>
+
+        <path id="Balochistan_Border" fill="none" stroke="#a08070" d="m 796.8,635.3 -13.8,7.4 -14.6,0.8 -11.8,-9 -10.4,15.6 -20,12 -15,9.2 -16,-1.6 6,14.8 15.4,-1.6 1.8,8 -42,16 -6.8,-0.6 -24.2,-2.2 -4,-10.8 -28.6,12.8 -4.8,15.8 -12,11.2 -17.2,4.2 -11,42.8 7.4,17 -11.2,42.2 11.8,9.6 -10.6,13.2 -118.8,36.8 -43.4,-5.2 -36.6,6.6 -16.2,17 -51.4,-13 -113.4,11.6 -157.8,-54.4 48.2,60.6 12.8,37.8 31.6,42.2 31.2,17.8 26.4,5.8 21.2,20.6 20,-2.4 -2,29.8 8,53.8 -6.8,36.2 16,4.8 24,-5.6 13.4,11.8 -6.2,6.4 2.6,23.9 -9,3.6 -2.2,22.6 -36.6,-0.6 -53,15 2,19.8 -14.2,-4.2 -2.8,7.6 -28.2,10.4 -7.2,49.2 -8,0.4 2.8,14.6 -10.2,54 16.6,1.4 -4.6,17 10.8,1 1.6,-6.2 24.8,-2 -3.8,-5.4 3.6,-6 11.8,-2 8.6,4.2 -2.4,9.6 10.6,0 -5.2,-5.6 14.6,-7.2 -1.8,-3 27,-2.4 27,5.2 10,-4.4 40.2,7 1.4,-2.4 -5.2,-8.2 10,-8.8 17.6,-2.8 18.2,5.8 14.2,-0.8 -3.6,-8.4 -2.6,3 -3.2,-3.2 6.2,-4 11.4,0.4 -1.8,3 -5.4,2.4 4,8.6 13.4,1.4 17.8,9.6 10.8,-4.6 9,7.2 -3,4 4.4,1.2 6,-1.8 -4.6,-4.6 2.4,-7.4 10.4,-4.6 29.4,1.6 8.6,1.8 7,-9.2 5.8,1 5.2,-3 4,3.2 6.8,-2.2 21.2,4.4 19,-8.6 44.4,-5.8 19,8 1.8,-0.8 -4.8,-6 2.8,-2.6 -4.2,-1.4 -2.4,1.4 -8.4,-8.2 -7.6,1 -5,6.2 -7.8,-2 2.4,-6.4 11.2,-5.2 4.4,1.4 6.2,-3 13.6,13.2 1.6,-1.6 5.6,15.8 -3.4,0.4 2.4,5.4 15.6,15.6 -5,34.4 2.4,0.8 17,-14.6 6.8,-0.6 8,-9.4 0.4,-7.2 10.6,-10.8 3.4,-18.2 20.8,-27.2 7.2,-21.8 0.6,-29.6 -22.8,-39.8 -8,-26.8 -1.4,-73.3 9.6,-29.2 15.8,-33.6 27.6,-6 26,-11.4 10.6,-15.2 32.6,-21.4 11.8,-14.2 66.4,-2.4 25,-0.8 -5,-12 11.2,-6.4 8.6,-20.2 -3.8,-10.8 21,-21.8 4.6,-24 -5.4,3 -4.8,-6.6 2.2,-7 -10.6,-3.4 4.2,-26.8 13.4,-5.4 15.6,-22.8 8.2,-23.8 7.6,-15.2 -9.6,3.8 -3.6,-7 4.2,-17.4 10.6,-20.8 -1,-9.2 12,-13.2 6.2,-0.8 -2.2,-6.2 1.2,-23.4 -2.4,-5 4,-24.8 -1.4,-17 -16.6,8 -5.6,9.8 -2.6,-16.8 -8.6,-5.2 2.4,-43.8 -7.6,5.2 -3,-3.2 3.8,-8.2 -7.2,-4.6 3,-9.6 -16.8,4.6 -10.6,11.6 -21.8,-1 -12.6,10.6 -7.8,16.8 -10,8.8 -7.2,-2.2 -5.2,5 -9.2,-1 -8.8,-9.8 -1.4,-8.6 -6.2,-0.6 z"
+        />
+      </g>
+
+      <g id="Sindh" transform="translate(-27.1,-28.1)">
+
+        <a id="state_Umerkot" class="state">
+          <path id="Umerkot" class="shape" d="m 911.4,1402.6 20.6,-11.8 38.8,-1 -5.6,-22.4 5.4,-12 -14,-6 10.8,-10.6 -6.6,-9.6 -15.4,5.4 -9.2,-1.8 -21.8,25.8 -16.2,3.8 1.4,-7.6 -39.4,-1.4 1.4,16.4 21.6,18.4 -2,18.2 8.2,28.4 14,-20 11.8,4.6 z" />
+        </a>
+
+        <a id="state_Tharparkar" class="state">
+          <path id="Tharparkar" class="shape" d="m 1001,1338.2 -20.2,4.2 -13.4,-3.6 -10.8,10.6 14,6 -5.4,12 5.6,22.4 -38.8,1 -20.6,11.8 3.8,16.8 -11.8,-4.6 -14,20 -14.6,8.8 -9,14.2 -1.6,17.8 -16.4,10.8 1.2,18.4 10.8,3.8 11,-4.8 13.2,0.8 14.8,-1.8 13.4,12.8 30,0.6 8.6,-13.2 26,-8 20.4,-7.6 2,3.4 -3.2,3.8 1.2,12 10,3.4 13.2,0.2 9.8,-5 -3.8,-3.8 11.4,-7.4 3.4,1.2 11,-6.6 -10.4,-2.8 -3,-19.4 9.6,-10.4 -14,-26.4 -7,-26.4 -21,-28 0.6,-31.6 z"/>
+        </a>
+
+        <a id="state_Thatta" class="state">
+          <path id="Thatta" class="shape" d="m 689.8,1550.2 11.4,3.2 3.2,-9.4 3,15.6 6.6,-0.4 -2.2,-5.2 11.8,3.6 2,-11.6 16.6,16.6 -1.4,-19.6 5.6,2.4 3.4,12.6 -5,9.6 4.6,2.8 1,-3.8 4.4,5 0.8,-24.2 3.8,14.4 4.6,-14.4 12.8,-9.6 38,2.2 1.4,-36.4 -2,-10.2 -30,-4.6 -3.4,-38.8 -9.4,-11 2.6,-9 -4.2,-12.2 2.4,-9.6 -2.4,-19.2 -7.4,-0.4 -14.6,-16.8 -10.8,10.4 0.2,7.4 -8.8,6 0,15.6 -9.8,10.6 -24.8,5.4 3.2,23.4 -13,-7.6 -18.6,7.8 -6,3 -5,8 1,4 5.6,-0.4 4,3.2 -6,3.2 3.8,3.8 2.8,12.6 2.8,-2.6 -0.8,9 8.2,1.8 -7.2,3.4 5,25.6 19.8,4 0.2,13.4 z"/>
+        </a>
+
+        <a id="state_Tando_Muhammad_Khan" class="state">
+          <path id="Tando_Muhammad_Khan" class="shape" d="m 771.4,1439 9.4,11 14.4,-13.8 6.4,2.4 8,-5.8 7.2,0.6 1,-7.2 -15.4,-13.8 -2.2,-4.2 -28,0 -2.4,9.6 4.2,12.2 z" />
+        </a>
+
+        <a id="state_Tando_Allahyar" class="state">
+          <path id="Tando_Allahyar" class="shape" d="m 821.2,1336 -10,9 0.6,10 -6.4,9.8 3.2,13.6 -4.4,5.8 3.8,5.8 5.4,-0.2 0.8,5.8 18.8,0 6.2,-9.4 0.6,-13 -6.8,-13.6 0.6,-18.4 z" />
+        </a>
+
+        <a id="state_Sukkur" class="state">
+          <path id="Sukkur" class="shape" d="m 830.2,1154.7 17.6,14.4 43.2,20 7.4,-18.8 23.8,-24.6 -20.6,-8 0.2,-7.6 -20.6,-1.6 -17.8,-22.2 10,-1 -9.2,-29 -10.6,-3 -23.8,24.4 -12.4,2.6 -5.6,6.4 8.8,6.2 12,0 -6.2,19.4 9.2,6.8 z" />
+        </a>
+
+        <a id="state_Shikarpur" class="state">
+          <path id="Shikarpur" class="shape" d="m 817.4,1100.3 12.4,-2.6 23.8,-24.4 -4.2,-5.8 -11,-1.2 -24.8,-8.2 -22.4,7 -10.4,-2.6 -0.4,21.6 -6.4,2.2 19,26.2 18.8,-5.8 z" />
+        </a>
+
+        <a id="state_Sanghar" class="state">
+          <path id="Sanghar" class="shape" d="m 811.2,1345 10,-9 12.4,5.2 10,-4.8 13.6,6 3,11 39.4,1.4 -1.4,7.6 16.2,-3.8 21.8,-25.8 9.2,1.8 15.4,-5.4 -10.8,-15.8 -2.2,-14.4 -90.4,-17.8 -23.6,-26.4 -24,20 4.4,8.8 -8.8,3 -10.2,-8 -9.4,6.8 11.4,16 -4.2,13.6 3.2,11.2 z"/>
+        </a>
+
+        <a id="state_Qambar_Shahdatkot" class="state">
+          <path id="Qambar_Shahdatkot" class="shape" d="m 662.6,1124.7 -9.6,29.2 94.8,7.2 7.2,-9 -1,-12.4 8.4,-22.6 8.6,-19 -5.6,-3.4 -3,-10.8 -8.8,-5.2 -12.2,0 -9.4,-5 -26,11.4 -27.6,6 z" />
+        </a>
+
+        <a id="state_Nawabshah" class="state">
+          <path id="Nawabshah" class="shape" d="m 818,1237.6 -40.2,-2.6 -27.8,5.2 -10.6,7 -4,23.6 28.6,37.8 9,-0.2 10.6,-11.4 13.6,4.4 -11.4,-16 9.4,-6.8 10.2,8 8.8,-3 -4.4,-8.8 24,-20 z" />
+        </a>
+
+        <a id="state_Naushahro_Firoze" class="state">
+          <path id="Naushahro_Firoze" class="shape" d="m 729.8,1210.8 5.6,22.2 -6,6.6 10,7.6 10.6,-7 27.8,-5.2 2,-29.6 9.8,-27.1 -24.2,-12.8 -12.8,13.8 -10.2,6.6 3.4,10 z" />
+        </a>
+
+        <a id="state_Shikarpur" class="state">
+          <path id="Mirpur_Khas" class="shape" d="m 860.2,1353.4 -3,-11 -13.6,-6 -10,4.8 -0.6,18.4 6.8,13.6 -0.6,13 4,22 18.6,17.6 10.2,3.4 2.8,14.4 14.6,-8.8 -8.2,-28.4 2,-18.2 -21.6,-18.4 z" />
+        </a>
+
+        <a id="state_Matiari" class="state">
+          <path id="Matiari" class="shape" d="m 793,1315 4.2,-13.6 -13.6,-4.4 -10.6,11.4 -3.2,8.6 9.6,9 -2.2,9.4 15,9.4 -3.6,-13.2 7.6,-5.4 z" />
+        </a>
+
+        <a id="state_Larkana" class="state">
+          <path id="Larkana" class="shape" d="m 773,1152.1 9.2,-1.8 -8.2,-14.8 8.2,-12.8 16.2,-3.6 -5.4,-6.6 -19,-26.2 -11.6,-2.4 3,10.8 5.6,3.4 -8.6,19 -8.4,22.6 1,12.4 -7.2,9 -4.4,8.6 9.2,9.6 12.8,-13.8 z" />
+        </a>
+
+        <a id="state_Khairpur" class="state">
+          <path id="Khairpur" class="shape" d="m 765.4,1165.5 24.2,12.8 -9.8,27.1 -2,29.6 40.2,2.6 15.8,17.2 23.6,26.4 90.4,17.8 9.2,-21.6 -0.4,-35 -10.2,-5.6 -18.6,2 -39,-21 2.2,-28.7 -43.2,-20 -17.6,-14.4 5.4,-15.6 -9.2,-6.8 6.2,-19.4 -12,0 -8.8,-6.2 -18.8,5.8 5.4,6.6 -16.2,3.6 -8.2,12.8 8.2,14.8 -9.2,1.8 z"/>
+        </a>
+
+        <a id="state_Kashmore" class="state">
+          <path id="Kashmore" class="shape" d="m 878.4,1019.7 -25,0.8 -15,45.8 11,1.2 4.2,5.8 10.6,3 6.4,-11 24.6,-13 7,8 21,-22 -11.6,-16.8 -23.6,-6.2 z"/>
+        </a>
+
+        <a id="state_Karachi" class="state">
+          <path id="Karachi" class="shape" d="m 671.6,1403.2 19,13.4 3.2,10.6 3.2,23.4 -13,-7.6 -18.6,7.8 -2.2,-4.2 -5,2.4 -10.6,-5 -0.2,3.6 -12,-8.6 0.2,4.2 -9.8,-5.8 -20.4,3.4 5,-7.6 17,-14.6 6.8,-0.6 8,-9.4 0.4,-7.2 10.6,-10.8 3.4,-18.2 20.8,-27.2 9.2,11.4 -2.2,17.8 z"/>
+        </a>
+
+        <a id="state_Jamshoro" class="state">
+          <path id="Jamshoro" class="shape" d="m 739.4,1247.2 -10,-7.6 -14.6,-5 -7.4,37.2 -9.4,-0.2 -12.8,22.2 -0.6,29.6 -7.2,21.8 9.2,11.4 -2.2,17.8 -12.8,28.8 19,13.4 3.2,10.6 24.8,-5.4 9.8,-10.6 0,-15.6 8.8,-6 -0.2,-7.4 10.8,-10.4 14.6,16.8 7.4,0.4 11.4,1.6 -6.6,-21.4 10.2,-7.8 -3.4,-9 10.8,-7.6 -15,-9.4 2.2,-9.4 -9.6,-9 3.2,-8.6 -9,0.2 -28.6,-37.8 z"/>
+        </a>
+
+        <a id="state_Jacobabad" class="state">
+          <path id="Jacobabad" class="shape" d="m 853.4,1020.5 -15,45.8 -24.8,-8.2 -22.4,7 -10.4,-2.6 -0.4,21.6 -6.4,2.2 -11.6,-2.4 -8.8,-5.2 -12.2,0 -9.4,-5 10.6,-15.2 32.6,-21.4 11.8,-14.2 z" />
+        </a>
+
+        <a id="state_Hyderabad" class="state">
+          <path id="Hyderabad" class="shape" d="m 800.2,1408.2 2.2,4.2 11.4,-5.6 0.4,-11.2 -0.8,-5.8 -5.4,0.2 -3.8,-5.8 4.4,-5.8 -3.2,-13.6 6.4,-9.8 -0.6,-10 -15,-18.8 -7.6,5.4 3.6,13.2 -10.8,7.6 3.4,9 -10.2,7.8 6.6,21.4 -11.4,-1.6 2.4,19.2 z" />
+        </a>
+
+        <a id="state_Ghotki" class="state">
+          <path id="Ghotki" class="shape" d="m 901.8,1130.1 -0.2,7.6 20.6,8 20,-20.6 8.4,-22.6 9.8,-13.4 -18,-8.4 -13,-17.8 -6.2,-24.6 -21,22 -7,-8 -24.6,13 -6.4,11 9.2,29 -10,1 17.8,22.2 z" />
+        </a>
+
+        <a id="state_Dadu" class="state">
+          <path id="Dadu" class="shape" d="m 752.6,1179.3 -9.2,-9.6 4.4,-8.6 -94.8,-7.2 1.4,73.3 8,26.8 22.8,39.8 12.8,-22.2 9.4,0.2 7.4,-37.2 14.6,5 6,-6.6 -5.6,-22.2 16,-14.9 -3.4,-10 z" />
+        </a>
+
+        <a id="state_Badin" class="state">
+          <path id="Badin" class="shape" d="m 784.2,1488.8 30,4.6 2,10.2 6.2,-3.4 3,12.2 6.8,-10.8 7,8.2 9.8,-5 -1.2,-18.4 16.4,-10.8 1.6,-17.8 9,-14.2 -2.8,-14.4 -10.2,-3.4 -18.6,-17.6 -4,-22 -6.2,9.4 -18.8,0 -0.4,11.2 -11.4,5.6 15.4,13.8 -1,7.2 -7.2,-0.6 -8,5.8 -6.4,-2.4 -14.4,13.8 z"/>
+        </a>
+
+        <path id="Sindh_Border" fill="none" stroke="#a08070" d="m 911.6,1021.5 -23.6,-6.2 -9.6,4.4 -35,1.2 -56.4,2 -11.8,14.2 -32.6,21.4 -10.6,15.2 -26,11.4 -27.6,6 -15.8,33.6 -9.6,29.2 1.4,73.3 8,26.8 22.8,39.8 -0.6,29.6 -7.2,21.8 -20.8,27.2 -3.4,18.2 -10.6,10.8 -0.4,7.2 -8,9.4 -6.8,0.6 -17,14.6 -5,7.6 20.4,-3.4 9.8,5.8 -0.2,-4.2 12,8.6 0.2,-3.6 10.6,5 5,-2.4 2.2,4.2 -6,3 -5,8 1,4 5.6,-0.4 4,3.2 -6,3.2 3.8,3.8 2.8,12.6 2.8,-2.6 -0.8,9 8.2,1.8 -7.2,3.4 5,25.6 19.8,4 0.2,13.4 -3.8,7.4 11.4,3.2 3.2,-9.4 3,15.6 6.6,-0.4 -2.2,-5.2 11.8,3.6 2,-11.6 16.6,16.6 -1.4,-19.6 5.6,2.4 3.4,12.6 -5,9.6 4.6,2.8 1,-3.8 4.4,5 0.8,-24.2 3.8,14.4 4.6,-14.4 12.8,-9.6 38,2.2 1.4,-36.4 6.2,-3.4 3,12.2 6.8,-10.8 7,8.2 9.8,-5 10.8,3.8 11,-4.8 13.2,0.8 14.8,-1.8 13.4,12.8 30,0.6 8.6,-13.2 26,-8 20.4,-7.6 2,3.4 -3.2,3.8 1.2,12 10,3.4 13.2,0.2 9.8,-5 -3.8,-3.8 11.4,-7.4 3.4,1.2 11,-6.6 -10.4,-2.8 -3,-19.4 9.6,-10.4 -14,-26.4 -7,-26.4 -21,-28 0.6,-31.6 -6,-5.4 -20.2,4.2 -13.4,-3.6 -6.6,-9.6 -10.8,-15.8 -2.2,-14.4 9.2,-21.6 -0.4,-35 -10.2,-5.6 -18.6,2 -39,-21 2.2,-28.7 7.4,-18.8 23.8,-24.6 20,-20.6 8.4,-22.6 9.8,-13.4 -18,-8.4 -13,-17.8 -6.2,-24.6 z"
+        />
+      </g>
+
+      <g id="Punjab" transform="translate(-27.1,-28.1)">
+
+        <a id="state_Vehari" class="state">
+          <path id="Vehari" class="shape" d="m 1123.8,847.1 3.6,2.6 7.6,-1.2 27.6,33 6,-0.4 8,-25.2 17.2,-5.6 12.6,3.8 15.4,-13.8 12.6,-0.8 3,-28 -8.6,-12.4 -35.6,22.8 -6.8,-6.4 -18.2,7.2 -6.6,11.2 -13.2,-5.4 -9.8,11.8 -11.4,1 z" />
+        </a>
+
+        <a id="state_Toba_Tek_Singh" class="state">
+          <path id="Toba_Tek_Singh" class="shape" d="m 1219.8,762.3 -7.2,-3.4 2,-9.4 -5,-7.6 10,-12.8 -3.4,-8.4 9.4,-19.8 -4.8,-6.2 -16.2,10.8 -18.2,2.4 -23.2,36.8 8.4,12.8 -12.2,4.8 -5.2,13.8 40.8,-2 19.6,0.4 z" />
+        </a>
+
+        <a id="state_Sialkot" class="state">
+          <path id="Sialkot" class="shape" d="m 1381.6,541.9 3,-20.8 8.4,9.2 16.6,-11.4 -4.8,14 -1.6,14.4 6.4,12.4 12,-1.2 8,2.8 -6.8,9.2 -4,9.2 -8.6,8.4 1.4,8.4 -8.4,3 -3.4,8.2 -5.8,0.4 -6.8,-8.8 -9,-2.2 -11.6,-9.6 -3.8,-13.8 -3.8,-6.4 0,-11.4 13.2,-2.8 z" />
+        </a>
+
+        <a id="state_Shaikhupura" class="state">
+          <path id="Shaikhupura" class="shape" d="m 1368,660.3 -7.4,19.4 -9.8,10.6 -4.4,0.6 -1,-8.2 -6.6,-0.2 -0.8,-7 -22.6,-9.8 -2.8,-31.4 9.8,-10.2 8.2,-1 -2.4,11.2 25,-1.8 3.4,5.2 4.2,-6.6 18,-2.6 16,-15 -0.8,-5.4 5.8,-0.4 3.4,8 7.6,4.6 -19.4,22.8 -5.2,14.6 z"/>
+        </a>
+
+        <a id="state_Sargodha" class="state">
+          <path id="Sargodha" class="shape" d="m 1221.4,636.9 11.4,-14.8 23.2,9.2 12.2,-22.2 -5.2,-14.2 -8.4,-1.4 -8.4,-10.2 3.4,-6.4 -6.2,-4.8 17.2,-9.6 0,-7.6 -60.6,15 -27.8,23 -11.6,53 13.4,4.4 -12.4,15.8 21.2,-10.6 10.8,-10.8 z" />
+        </a>
+
+        <a id="state_Sahiwal" class="state">
+          <path id="Sahiwal" class="shape" d="m 1266.6,781.3 9.8,3.8 -0.8,-16.6 2.6,-8.6 -7,-5.4 -4.8,-12.6 -38.6,22.8 -8,-2.4 -5.2,12.2 -19.6,-0.4 -6.8,21.4 -1.8,20 6.8,6.4 35.6,-22.8 19.4,-2 z" />
+        </a>
+
+        <a id="state_Rawalpindi" class="state">
+          <path id="Rawalpindi" class="shape" d="m 1278,390.2 13.2,-6 8.6,35.9 -3,8.6 6.2,11.2 -6.2,17.8 6.6,17.8 -17.6,8.4 -9.8,-2.2 -3.2,11 -18.2,3.8 -11.8,3.2 -13.8,-11.2 -30,-7.6 8.8,-18.2 17.6,-11.6 -7.8,-18.2 -9,-2.8 3.6,-6.6 -8.2,-9.6 5.8,-5.2 3.8,3.2 12,-3 -5.2,4.8 10.8,4.2 -11.8,3.6 6.4,13.8 18,-8.8 6.8,10.2 -3.8,3 6,4.8 11.2,-7.2 1.6,-9 7.8,-7.8 -3.2,-4.2 -2.8,0.2 -10.6,-7.8 16.6,-9.2 z"/>
+        </a>
+
+        <a id="state_Rajanpur" class="state">
+          <path id="Rajanpur" class="shape" d="m 972.2,870.9 -17.8,-3.2 -10.4,21 3.4,27.4 -13,26.6 -9.2,10.8 1.6,20.4 -14.4,23.2 -6.6,1 5.8,23.4 36.8,-15.2 0,-19.6 14.4,2.8 17.4,-10.2 -4.4,-12.2 15.8,-2.8 7.4,-23.8 -5,-6.8 15,-30.8 1.6,-23.4 -11.6,-8.6 -14.6,18.2 z"/>
+        </a>
+
+        <a id="state_Rahimyar_Khan" class="state">
+          <path id="Rahimyar_Khan" class="shape" d="m 1020.4,944.3 -3,11.8 -25.8,8.2 -15.8,2.8 4.4,12.2 -17.4,10.2 -14.4,-2.8 0,19.6 -36.8,15.2 11.6,16.8 6.2,24.6 13,17.8 18,8.4 16,-14.4 19.6,-1.2 11,12 3.2,13.2 5.4,9.6 12.8,1.2 35.8,-16.4 -27.2,-89.8 11,-53.8 -8.4,4 -5.4,-18.6 z"/>
+        </a>
+
+        <a id="state_Pakpattan" class="state">
+          <path id="Pakpattan" class="shape" d="m 1266.6,781.3 -18.4,15.8 -19.4,2 8.6,12.4 -3,28 10.8,4.4 4.6,-8 30.2,-10 26.2,-18.4 -1,-20.6 -18.2,-11.8 -10.6,10 z" />
+        </a>
+
+        <a id="state_Okara" class="state">
+          <path id="Okara" class="shape" d="m 1278.2,759.9 -2.6,8.6 0.8,16.6 10.6,-10 18.2,11.8 1,20.6 21.2,-3.4 5.6,-11.2 10.8,-8.8 3.8,1.6 2.2,-10 13.2,-12.8 -14,-3.8 -10.8,-9.6 -12.6,-1.8 -17.8,-21.2 0,-10.8 -16.8,6 -12.4,11.8 -4.4,-0.4 -7.8,8.8 4.8,12.6 z"/>
+        </a>
+
+        <a id="state_Narowal" class="state">
+          <path id="Narowal" class="shape" d="m 1422.8,570.5 6.8,-9.2 7.4,2.8 7.8,-5.2 7.8,8.2 6,-0.4 12.4,9.2 7,9.6 -14.8,20.4 -2.2,-4 -21.4,10.4 -6.6,-3.6 -13,13 -9.2,-1.4 -7.6,-4.6 -3.4,-8 3.4,-8.2 8.4,-3 -1.4,-8.4 8.6,-8.4 z" />
+        </a>
+
+        <a id="state_Nankana_Sahab" class="state">
+          <path id="Nankana_Sahab" class="shape" d="m 1285,665.1 8,20.8 8.6,-3.8 8.6,8.8 -4,10.2 -20.8,13.8 -10,9.6 -1.2,8.6 4.4,0.4 12.4,-11.8 16.8,-6 9.2,-5.4 12,-3 5.4,-5.6 9.6,-2.4 2.4,-8.4 -1,-8.2 -6.6,-0.2 -0.8,-7 -22.6,-9.8 -2.8,-31.4 -13.2,1.8 -8.6,6.2 -22.4,7.8 z"/>
+        </a>
+
+        <a id="state_Muzaffargarh" class="state">
+          <path id="Muzaffargarh" class="shape" d="m 1010.6,879.5 -1.6,23.4 -15,30.8 5,6.8 -7.4,23.8 25.8,-8.2 3,-11.8 13.8,-9.4 13.8,-25 0.8,-24.8 13.4,-6.6 -1.6,-27 30,-54 -6.4,-2 8.6,-17.4 -33.4,-21 -7,12.8 -32.6,1.6 3.8,25 -4,24.4 6.4,33 z" />
+        </a>
+
+        <a id="state_Multan" class="state">
+          <path id="Multan" class="shape" d="m 1067.6,904.3 12.8,6.4 5.4,-41.2 21.8,-25.6 16.6,-27.6 -33.6,-18.8 -30,54 1.6,27 -13.4,6.6 -0.8,24.8 z" />
+        </a>
+
+        <a id="state_Mianwali" class="state">
+          <path id="Mianwali" class="shape" d="m 1127,556.1 -11.6,10.4 4,7.6 -9.2,12.8 1,10.8 -58.8,1 11,-21.8 10,-3.8 0.6,-18.8 -9.6,3.6 0.2,-10.6 -7.6,0 -6.4,-19 3.6,-19.6 12.8,-8 15.2,-1.6 2.2,-7.4 -6.2,-18.4 18.4,2.2 4.8,12.6 10.8,4.6 -3.6,12.8 10.8,-2.2 12,19.8 -6.8,9.8 z"/>
+        </a>
+
+        <a id="state_Mandi_Bahauddin" class="state">
+          <path id="Mandi_Bahauddin" class="shape" d="m 1293.2,588.5 -9.6,13.2 -15.4,7.4 -5.2,-14.2 -8.4,-1.4 -8.4,-10.2 3.4,-6.4 -6.2,-4.8 17.2,-9.6 0,-7.6 9.2,-4.2 5.4,3 20,-12.8 3.4,-5.8 29.2,36 -17.6,9.6 z" />
+        </a>
+
+        <a id="state_Lodhran" class="state">
+          <path id="Lodhran" class="shape" d="m 1094.4,913.5 68.2,-32 -27.6,-33 -7.6,1.2 -3.6,-2.6 -16.2,-3.2 -21.8,25.6 -5.4,41.2 z" />
+        </a>
+
+        <a id="state_Layyah" class="state">
+          <path id="Layyah" class="shape" d="m 1120.6,739.5 -4.6,-28.6 -19.2,-8.2 -10.2,10.4 -14,1 -13.4,-21.6 -35.2,-7.6 -7.6,14.4 2.4,46.8 -4.2,9.2 5.2,16.2 32.6,-1.6 7,-12.8 33.4,21 3.6,6 6,-14 z" />
+        </a>
+
+        <a id="state_Lahore" class="state">
+          <path id="Lahore" class="shape" d="m 1346.4,690.9 4.4,-0.6 9.8,-10.6 7.4,-19.4 18.2,-2.6 5.2,-14.6 12.4,34 -9,19.6 -8.2,-2 -2.6,4.6 -18.2,6 -21.8,-6 z" />
+        </a>
+
+        <a id="state_Khushab" class="state">
+          <path id="Khushab" class="shape" d="m 1172.2,592.9 27.8,-23 -2,-15 -11.2,-13.2 -11.2,6.6 -24.6,-11.6 -4,8.4 -20,11 -11.6,10.4 4,7.6 -9.2,12.8 1,10.8 1.6,16 -14.6,19.8 13.2,21.2 24.6,18 16.8,-22.6 7.8,-4.2 z" />
+        </a>
+
+        <a id="state_Khanewal" class="state">
+          <path id="Khanewal" class="shape" d="m 1107.6,843.9 16.2,3.2 3.4,-5.8 11.4,-1 9.8,-11.8 13.2,5.4 6.6,-11.2 18.2,-7.2 1.8,-20 6.8,-21.4 -40.8,2 5.2,-13.8 -43.6,13.8 -13.4,-6 -6,14 -3.6,-6 -8.6,17.4 6.4,2 33.6,18.8 z" />
+        </a>
+
+        <a id="state_Kasur" class="state">
+          <path id="Kasur" class="shape" d="m 1344,699.3 21.8,6 18.2,-6 2.6,-4.6 8.2,2 -0.4,18.6 11.8,3 2.4,4.8 -4.8,5 -8.6,-4.8 -0.6,8.2 -18.2,12.2 -13.4,19.2 -14,-3.8 -10.8,-9.6 -12.6,-1.8 -17.8,-21.2 0,-10.8 9.2,-5.4 12,-3 5.4,-5.6 z" />
+        </a>
+
+        <a id="state_Jhelum" class="state">
+          <path id="Jhelum" class="shape" d="m 1252.8,539.3 10.2,-0.4 -4,-7.6 -10.2,-1.4 -1.2,-7 8.4,-10 -1.4,-16.4 18.2,-3.8 3.2,-11 9.8,2.2 17.6,-8.4 2.6,7 -3.2,7.2 17.6,9.8 -1,6.4 -19.2,20.8 -1.6,8.4 -3.4,5.8 -20,12.8 -5.4,-3 -9.2,4.2 -60.6,15 -2,-15 7,-4.2 3,5 5.8,-8 25,-4.8 5.4,1.4 z"/>
+        </a>
+
+        <a id="state_Jhang" class="state">
+          <path id="Jhang" class="shape" d="m 1159.4,762.3 12.2,-4.8 -8.4,-12.8 23.2,-36.8 18.2,-2.4 16.2,-10.8 -1.2,-5.8 -8.8,4 -22.4,-14.8 -5.6,-22.6 -21.2,10.6 12.4,-15.8 -13.4,-4.4 -7.8,4.2 -16.8,22.6 -0.4,30 -10.6,-1.8 -9,10 4.6,28.6 -18.2,30.6 13.4,6 z" />
+        </a>
+
+        <a id="state_Hafizabad" class="state">
+          <path id="Hafizabad" class="shape" d="m 1290.8,642.3 -22.4,7.8 -8,-6.6 -4.4,-12.2 12.2,-22.2 15.4,-7.4 9.6,-13.2 17,-7.8 4.2,13.2 7.8,9.4 3.6,12 -3.4,8.8 -9.8,10.2 -13.2,1.8 z" />
+        </a>
+
+        <a id="state_Gujranwala" class="state">
+          <path id="Gujranwala" class="shape" d="m 1359,567.3 3.8,6.4 3.8,13.8 11.6,9.6 9,2.2 6.8,8.8 0.8,5.4 -16,15 -18,2.6 -4.2,6.6 -3.4,-5.2 -25,1.8 2.4,-11.2 -8.2,1 3.4,-8.8 -3.6,-12 -7.8,-9.4 -4.2,-13.2 17.6,-9.6 11,0.6 20.2,-15.8 z" />
+        </a>
+
+        <a id="state_Gujrat" class="state">
+          <path id="Gujrat" class="shape" d="m 1327.8,571.1 -29.2,-36 1.6,-8.4 19.2,-20.8 1,-6.4 11.6,-3 9,10 30.8,15 12.8,-0.4 -3,20.8 -9.4,11.2 -13.2,2.8 -20.2,15.8 z" />
+        </a>
+
+        <a id="state_Faisalabad" class="state">
+          <path id="Faisalabad" class="shape" d="m 1216.2,720.7 3.4,8.4 -10,12.8 5,7.6 -2,9.4 7.2,3.4 8,2.4 38.6,-22.8 7.8,-8.8 1.2,-8.6 10,-9.6 20.8,-13.8 4,-10.2 -8.6,-8.8 -8.6,3.8 -8,-20.8 -16.6,-15 -8,-6.6 -40.8,45.4 1.2,5.8 4.8,6.2 z" />
+        </a>
+
+        <a id="state_Dera_Ghazi_Khan" class="state">
+          <path id="Dera_Ghazi_Khan" class="shape" d="m 979,705.5 -13.4,6.4 0.6,10 -3,0.4 -1.2,23.4 2.2,6.2 -6.2,0.8 -12,13.2 1,9.2 -10.6,20.8 -4.2,17.4 3.6,7 9.6,-3.8 -7.6,15.2 -8.2,23.8 -15.6,22.8 -13.4,5.4 -4.2,26.8 10.6,3.4 -2.2,7 4.8,6.6 5.4,-3 -4.6,24 -21,21.8 3.8,10.8 -8.6,20.2 -11.2,6.4 5,12 9.6,-4.4 23.6,6.2 -5.8,-23.4 6.6,-1 14.4,-23.2 -1.6,-20.4 9.2,-10.8 13,-26.6 -3.4,-27.4 10.4,-21 17.8,3.2 12.2,18.2 14.6,-18.2 11.6,8.6 15.4,-25.6 -6.4,-33 4,-24.4 -3.8,-25 -5.2,-16.2 4.2,-9.2 -2.4,-46.8 -7.2,-6 -13.6,-1.6 z"/>
+        </a>
+
+        <a id="state_Chiniot" class="state">
+          <path id="Chiniot" class="shape" d="m 1221.4,636.9 -27.8,7.8 -10.8,10.8 5.6,22.6 22.4,14.8 8.8,-4 40.8,-45.4 -4.4,-12.2 -23.2,-9.2 z" />
+        </a>
+
+        <a id="state_Chakwal" class="state">
+          <path id="Chakwal" class="shape" d="m 1184.2,490.5 -23.2,2 -5.2,-4 -6.4,5.6 -7.2,-2.6 -22.8,11.8 12,19.8 -6.8,9.8 2.4,23.2 20,-11 4,-8.4 24.6,11.6 11.2,-6.6 11.2,13.2 7,-4.2 3,5 5.8,-8 25,-4.8 5.4,1.4 8.6,-5 10.2,-0.4 -4,-7.6 -10.2,-1.4 -1.2,-7 8.4,-10 -1.4,-16.4 -11.8,3.2 -13.8,-11.2 -30,-7.6 -6.6,-1.6 z"/>
+        </a>
+
+        <a id="state_Bhakkar" class="state">
+          <path id="Bhakkar" class="shape" d="m 1135.6,702.7 0.4,-30 -24.6,-18 -13.2,-21.2 14.6,-19.8 -1.6,-16 -58.8,1 -9.8,30.6 -15.8,23.2 -4.4,16.6 6,1 -4.4,14.8 35.2,7.6 13.4,21.6 14,-1 10.2,-10.4 19.2,8.2 9,-10 z" />
+        </a>
+
+        <a id="state_Bahawalpur" class="state">
+          <path id="Bahawalpur" class="shape" d="m 1168.6,881.1 -6,0.4 -68.2,32 -14,-2.8 -12.8,-6.4 -19.6,5.6 -13.8,25 5.4,18.6 8.4,-4 -11,53.8 27.2,89.8 50.2,-7 15.4,-6.2 2.2,-17.4 26.2,-28 11.8,-35.2 9.4,-12.8 20.8,-11.6 -8,-25.8 -12.6,0 -3.6,-12.6 6,-5.8 39.8,0 4.2,-13.8 -12,-7 8.4,-27.2 -15.8,-17 -0.2,-11.6 -12.6,-3.8 -17.2,5.6 z"/>
+        </a>
+
+        <a id="state_Bahawalnagar" class="state">
+          <path id="Bahawalnagar" class="shape" d="m 1280,825.9 -30.2,10 -4.6,8 -10.8,-4.4 -12.6,0.8 -15.4,13.8 0.2,11.6 15.8,17 -8.4,27.2 12,7 -4.2,13.8 -39.8,0 -6,5.8 3.6,12.6 12.6,0 8,25.8 34.6,-19.6 30.8,-55.2 13.8,-47.4 40.8,-15.2 16.2,-13.8 -2.2,-13.2 -6.8,-6.4 -21.2,3.4 z"/>
+        </a>
+
+        <a id="state_Attock" class="state">
+          <path id="Attock" class="shape" d="m 1207.8,462.7 -8.8,18.2 -6.6,-1.6 -8.2,11.2 -23.2,2 -5.2,-4 -6.4,5.6 -7.2,-2.6 -22.8,11.8 -10.8,2.2 3.6,-12.8 4.2,-12.8 -5.6,-10.4 2.4,-9.4 14,-6.4 9.2,-14 7.8,-25.2 21,-2.2 0,-18.7 20.4,-9.4 17.2,9.4 -2.6,5.4 7.2,2.5 7,-7.3 8.6,5.8 2.6,8.9 -12,3 -3.8,-3.2 -5.8,5.2 8.2,9.6 -3.6,6.6 9,2.8 7.8,18.2 z"/>
+        </a>
+
+        <path id="Punjab_Border" fill="none" stroke="#a08070" d="m 1303,439.9 -6.2,-11.2 3,-8.6 -8.6,-35.9 -13.2,6 -4.6,9.3 -16.6,9.2 10.6,7.8 2.8,-0.2 3.2,4.2 -7.8,7.8 -1.6,9 -11.2,7.2 -6,-4.8 3.8,-3 -6.8,-10.2 -18,8.8 -6.4,-13.8 11.8,-3.6 -10.8,-4.2 5.2,-4.8 -2.6,-8.9 -8.6,-5.8 -7,7.3 -7.2,-2.5 2.6,-5.4 -17.2,-9.4 -20.4,9.4 0,18.7 -21,2.2 -7.8,25.2 -9.2,14 -14,6.4 -2.4,9.4 5.6,10.4 -4.2,12.8 -10.8,-4.6 -4.8,-12.6 -18.4,-2.2 6.2,18.4 -2.2,7.4 -15.2,1.6 -12.8,8 -3.6,19.6 6.4,19 7.6,0 -0.2,10.6 9.6,-3.6 -0.6,18.8 -10,3.8 -11,21.8 -9.8,30.6 -15.8,23.2 -4.4,16.6 6,1 -4.4,14.8 -7.6,14.4 -7.2,-6 -13.6,-1.6 -16.6,13.8 -13.4,6.4 0.6,10 -3,0.4 -1.2,23.4 2.2,6.2 -6.2,0.8 -12,13.2 1,9.2 -10.6,20.8 -4.2,17.4 3.6,7 9.6,-3.8 -7.6,15.2 -8.2,23.8 -15.6,22.8 -13.4,5.4 -4.2,26.8 10.6,3.4 -2.2,7 4.8,6.6 5.4,-3 -4.6,24 -21,21.8 3.8,10.8 -8.6,20.2 -11.2,6.4 5,12 9.6,-4.4 23.6,6.2 11.6,16.8 6.2,24.6 13,17.8 18,8.4 16,-14.4 19.6,-1.2 11,12 3.2,13.2 5.4,9.6 12.8,1.2 35.8,-16.4 50.2,-7 15.4,-6.2 2.2,-17.4 26.2,-28 11.8,-35.2 9.4,-12.8 20.8,-11.6 34.6,-19.6 30.8,-55.2 13.8,-47.4 40.8,-15.2 16.2,-13.8 -2.2,-13.2 -6.8,-6.4 5.6,-11.2 10.8,-8.8 3.8,1.6 2.2,-10 13.2,-12.8 13.4,-19.2 18.2,-12.2 0.6,-8.2 8.6,4.8 4.8,-5 -2.4,-4.8 -11.8,-3 0.4,-18.6 9,-19.6 -12.4,-34 19.4,-22.8 9.2,1.4 13,-13 6.6,3.6 21.4,-10.4 2.2,4 14.8,-20.4 -7,-9.6 -12.4,-9.2 -6,0.4 -7.8,-8.2 -7.8,5.2 -7.4,-2.8 -8,-2.8 -12,1.2 -6.4,-12.4 1.6,-14.4 4.8,-14 -16.6,11.4 -8.4,-9.2 -12.8,0.4 -30.8,-15 -9,-10 -11.6,3 -17.6,-9.8 3.2,-7.2 -2.6,-7 -6.6,-17.8 z"/>
+      </g>
+
+
+      <g id="Khyber Pakhtunkhwa" transform="translate(-27.1,-28.1)">
+
+        <a id="state_Upper_Dir" class="state">
+          <path id="Upper_Dir" class="shape" d="m 1093.4,260.2 1.8,8 31.2,-3.6 12.4,19.6 12.6,0.2 17.6,-40 6.2,-29 -14.6,-24 1,-4.2 -8,-2.8 -46.4,63.6 z" />
+        </a>
+
+        <a id="state_Tank" class="state">
+          <path id="Tank" class="shape" d="m 951.2,614.5 -5,-21.4 30.2,-21 9.4,-14.4 10,6 2.6,-6.2 13,11.4 -3.8,17.2 -13.6,18.8 -36,13 z" />
+        </a>
+
+        <a id="state_Swat" class="state">
+          <path id="Swat" class="shape" d="m 1169,244.4 -17.6,40 7.8,13 -7.4,9.6 2.6,10.2 7,0 27.8,-15.4 6.6,-33.4 12.8,-19.4 7,-19.8 -4.6,-6.4 11.4,-50.8 -15.4,4.4 -15.8,-9.4 -13.2,19.2 -16.4,1 -1,4.2 14.6,24 z" />
+        </a>
+
+        <a id="state_Swabi" class="state">
+          <path id="Swabi" class="shape" d="m 1165.2,393.6 20.4,-9.4 32.4,-24.2 -7.8,-18 -17,17.6 -12,-3.6 8,-16.2 -7,-2.2 -10.2,14.6 -9.8,2.6 -1.8,16.8 z"/>
+        </a>
+
+        <a id="state_Shangla" class="state">
+          <path id="Shangla" class="shape" d="m 1217.8,269.4 -9.2,-20.4 -12.8,19.4 -6.6,33.4 7.6,7.2 11,-5.8 3.2,16.2 8,-6 -2.2,-9 3.6,-14.2 5.2,3.2 4.6,-15.6 -3.6,-9.4 z" />
+        </a>
+
+        <a id="state_Peshawar" class="state">
+          <path id="Peshawar" class="shape" d="m 1089,406.1 0.2,9 9.4,3 10.6,-3.8 4.2,-7.2 3.4,-14.9 -5.4,-17.2 -25.6,-12.4 -9.8,13 5,25.9 z" />
+        </a>
+
+        <a id="state_Nowshera" class="state">
+          <path id="Nowshera" class="shape" d="m 1165.2,393.6 -4.8,-22 -7.2,2.8 -20.8,-5.6 -6.4,12.8 -14.6,-6.6 5.4,17.2 -3.4,14.9 10.2,6.8 1.4,4.2 19.2,-3.6 21,-2.2 z" />
+        </a>
+
+        <a id="state_Mardan" class="state">
+          <path id="Mardan" class="shape" d="m 1121.8,350.4 10.6,18.4 20.8,5.6 7.2,-2.8 1.8,-16.8 9.8,-2.6 10.2,-14.6 -18.8,-6 -2.4,-7.2 -21.2,1.8 -15.6,15.8 z" />
+        </a>
+
+        <a id="state_Mansehra" class="state">
+          <path id="Mansehra" class="shape" d="m 1225.6,293.4 -5.2,-3.2 -3.6,14.2 2.2,9 -8,6 -3,7 5,9.2 12.4,4.6 11,10 20.2,-3.4 15.8,-16 11,-2 3,-9 16.6,1 9,-23.4 25.4,-11 11.4,-18.6 -2.8,-4.2 6.6,-7.4 -21.2,-9.4 -16,14.2 -20.4,2.8 -10.2,11.6 -12,22.8 -14.2,-6 -12,18.4 -17.2,0.4 z"/>
+        </a>
+
+        <a id="state_Malakand" class="state">
+          <path id="Malakand" class="shape" d="m 1107.6,333.2 -5,-8.8 3.8,-10 8.6,-5 36.8,-2.4 2.6,10.2 7,0 -0.4,7.2 -21.2,1.8 -15.6,15.8 z" />
+        </a>
+
+        <a id="state_Lower_Dir" class="state">
+          <path id="Lower_Dir" class="shape" d="m 1151.4,284.4 -12.6,-0.2 -12.4,-19.6 -31.2,3.6 -5.4,6.4 10,17 15.6,4.2 -0.4,13.6 36.8,-2.4 7.4,-9.6 z"/>
+        </a>
+
+        <a id="state_Lakki_Marwat" class="state">
+          <path id="Lakki_Marwat" class="shape" d="m 986.4,544.3 12,13.2 13,11.4 -3.8,17.2 56.8,-28.2 0.2,-10.6 -7.6,0 -6.4,-19 -15.8,-10.8 -18.4,10.8 -17.8,-5.2 -19.6,13.2 z" />
+        </a>
+
+        <a id="state_Kohistan" class="state">
+          <path id="Kohistan" class="shape" d="m 1215.6,229.2 -7,19.8 9.2,20.4 8.8,-1 3.6,9.4 12,-7 42.6,4.6 10.2,-11.6 20.4,-2.8 16,-14.2 -18.6,-1.6 -3,-11.2 1.4,-11.4 9.4,-10 -53,-13 -16,-14 0.6,-11.6 -4.8,-3 -9.8,3.6 -15.2,-2.6 -11.4,50.8 z" />
+        </a>
+
+        <a id="state_Kohat" class="state">
+          <path id="Kohat" class="shape" d="m 1050.2,418.1 -2.4,15.8 16.6,2.6 -14,23.4 27.8,13.4 18.4,2.2 4.8,12.6 10.8,4.6 4.2,-12.8 -5.6,-10.4 2.4,-9.4 14,-6.4 9.2,-14 7.8,-25.2 -19.2,3.6 -5,5 2,6 -13.8,11.2 -8,0.8 -3,-5.4 4.2,-4.8 -18.4,-3.6 -10.2,1.8 -16.6,-11.6 z"/>
+        </a>
+
+        <a id="state_Karak" class="state">
+          <path id="Karak" class="shape" d="m 1029,464.1 -16.6,9.4 13.2,5.2 -15.8,16.4 20.6,5.8 4.4,16.6 15.8,10.8 3.6,-19.6 12.8,-8 15.2,-1.6 2.2,-7.4 -6.2,-18.4 -27.8,-13.4 z" />
+        </a>
+
+        <a id="state_Haripur" class="state">
+          <path id="Haripur" class="shape" d="m 1185.6,384.2 17.2,9.4 -2.6,5.4 7.2,2.5 7,-7.3 8.6,5.8 2.6,8.9 -5.2,4.8 10.8,4.2 25.6,-9.2 3,-19.5 -8.8,-3.8 4.6,-14.4 -9.4,0 1,-6.6 -10.8,-14.2 -11,-10 -12.4,-4.6 -2.8,6.4 7.8,18 z" />
+        </a>
+
+        <a id="state_Hangu" class="state">
+          <path id="Hangu" class="shape" d="m 1029,464.1 -16.6,9.4 -10.8,-4.2 -4.8,-5.8 -9.2,-11.2 23.4,-8.2 3.2,-10 17,2.8 16.6,-3 16.6,2.6 -14,23.4 z" />
+        </a>
+
+        <a id="state_Dera_Ismail_Khan" class="state">
+          <path id="Dera_Ismail_Khan" class="shape" d="m 1016.4,699.3 7.6,-14.4 4.4,-14.8 -6,-1 4.4,-16.6 15.8,-23.2 9.8,-30.6 11,-21.8 10,-3.8 0.6,-18.8 -9.6,3.6 -56.8,28.2 -13.6,18.8 -36,13 2.6,27.2 18.4,60.4 16.6,-13.8 13.6,1.6 z" />
+        </a>
+
+        <a id="state_Chitral" class="state">
+          <path id="Chitral" class="shape" d="m 1130.6,97.4 2.8,-6.4 16,-4.2 0.6,-5.8 11.2,-2 -1.8,-3.2 4.6,-7 25.4,-2.8 14.2,-8.2 28.6,0.4 4.4,-3.2 5.8,1.6 11.8,-4 21.2,1.6 28.6,-2.6 8.4,8.2 12.8,5.4 -0.6,9 -26.2,0 -21.4,-4.8 -32.4,8.6 2.6,7.8 -11.6,15.6 -7.4,1.4 -2.8,8.6 -30.8,18.4 -2.6,17.4 4.4,7.4 -5.2,12.4 -13.2,19.2 -16.4,1 -8,-2.8 -46.4,63.6 -12,-11.6 9.4,-18 -5.4,-5.2 1.8,-8.6 -11.2,-6.2 4.6,-10.8 -6.6,-4.8 -1.2,-8.4 -9.2,-13.6 -17.4,-9.4 4.4,-10 31.4,-23.4 0.2,-5.8 8.6,-12.2 19.6,11.4 1.8,-5.2 -4.4,-1.6 1.4,-7.2 z"/>
+        </a>
+
+        <a id="state_Charsadda" class="state">
+          <path id="Charsadda" class="shape" d="m 1107.6,333.2 16.6,8.8 -2.4,8.4 10.6,18.4 -6.4,12.8 -14.6,-6.6 -25.6,-12.4 z" />
+        </a>
+
+        <a id="state_Buner" class="state">
+          <path id="Buner" class="shape" d="m 1196.8,309 11,-5.8 3.2,16.2 -3,7 5,9.2 -2.8,6.4 -17,17.6 -12,-3.6 8,-16.2 -7,-2.2 -18.8,-6 -2.4,-7.2 0.4,-7.2 27.8,-15.4 z" />
+        </a>
+
+        <a id="state_Battagram" class="state">
+          <path id="Battagram" class="shape" d="m 1242.2,270.8 42.6,4.6 -12,22.8 -14.2,-6 -12,18.4 -17.2,0.4 -3.8,-17.6 4.6,-15.6 z" />
+        </a>
+
+        <a id="state_Bannu" class="state">
+          <path id="Bannu" class="shape" d="m 976.4,521.3 2.6,15 19.6,-13.2 17.8,5.2 18.4,-10.8 -4.4,-16.6 -20.6,-5.8 -17.2,-0.8 z" />
+        </a>
+
+        <a id="state_Abbotabad" class="state">
+          <path id="Abbotabad" class="shape" d="m 1291.2,384.2 -11.4,-44.6 3.6,-10.8 -11,2 -15.8,16 -20.2,3.4 10.8,14.2 -1,6.6 9.4,0 -4.6,14.4 8.8,3.8 -3,19.5 16.6,-9.2 4.6,-9.3 z" />
+        </a>
+
+        <path id="Khyber_Pakhtunkhwah_Border" fill="none" stroke="#a08070" d="m 1244.6,78 32.4,-8.6 21.4,4.8 26.2,0 0.6,-9 -12.8,-5.4 -8.4,-8.2 -28.6,2.6 -21.2,-1.6 -11.8,4 -5.8,-1.6 -4.4,3.2 -28.6,-0.4 -14.2,8.2 -25.4,2.8 -4.6,7 1.8,3.2 -11.2,2 -0.6,5.8 -16,4.2 -2.8,6.4 -7.6,0 -1.4,7.2 4.4,1.6 -1.8,5.2 -19.6,-11.4 -8.6,12.2 -0.2,5.8 -31.4,23.4 -4.4,10 17.4,9.4 9.2,13.6 1.2,8.4 6.6,4.8 -4.6,10.8 11.2,6.2 -1.8,8.6 5.4,5.2 -9.4,18 12,11.6 -13.8,12.2 1.8,8 -5.4,6.4 10,17 15.6,4.2 -0.4,13.6 -8.6,5 -3.8,10 5,8.8 -21.8,29.4 -9.8,13 5,25.9 8,4.6 0.2,9 9.4,3 10.6,-3.8 4.2,-7.2 10.2,6.8 1.4,4.2 -5,5 2,6 -13.8,11.2 -8,0.8 -3,-5.4 4.2,-4.8 -18.4,-3.6 -10.2,1.8 -16.6,-11.6 -6,0.6 -2.4,15.8 -16.6,3 -17,-2.8 -3.2,10 -23.4,8.2 14,17 10.8,4.2 13.2,5.2 -15.8,16.4 -17.2,-0.8 -16.2,27 2.6,15 7.4,8 12,13.2 -2.6,6.2 -10,-6 -9.4,14.4 -30.2,21 5,21.4 6.8,3.4 2.6,27.2 18.4,60.4 16.6,-13.8 13.6,1.6 7.2,6 7.6,-14.4 4.4,-14.8 -6,-1 4.4,-16.6 15.8,-23.2 9.8,-30.6 11,-21.8 10,-3.8 0.6,-18.8 -9.6,3.6 0.2,-10.6 -7.6,0 -6.4,-19 3.6,-19.6 12.8,-8 15.2,-1.6 2.2,-7.4 -6.2,-18.4 18.4,2.2 4.8,12.6 10.8,4.6 4.2,-12.8 -5.6,-10.4 2.4,-9.4 14,-6.4 9.2,-14 7.8,-25.2 21,-2.2 0,-18.7 20.4,-9.4 17.2,9.4 -2.6,5.4 7.2,2.5 7,-7.3 8.6,5.8 2.6,8.9 -5.2,4.8 10.8,4.2 25.6,-9.2 16.6,-9.2 4.6,-9.3 13.2,-6 -11.4,-44.6 3.6,-10.8 3,-9 16.6,1 9,-23.4 25.4,-11 11.4,-18.6 -2.8,-4.2 6.6,-7.4 -21.2,-9.4 -18.6,-1.6 -3,-11.2 1.4,-11.4 9.4,-10 -53,-13 -16,-14 0.6,-11.6 -4.8,-3 -9.8,3.6 -15.2,-2.6 -15.4,4.4 -15.8,-9.4 5.2,-12.4 -4.4,-7.4 2.6,-17.4 30.8,-18.4 2.8,-8.6 7.4,-1.4 11.6,-15.6 z"/>
+      </g>
+
+      <g id="FATA" transform="translate(-27.1,-28.1)">
+
+        <a id="state_FR_Tank" class="state">
+          <path id="FR_Tank" class="shape" d="m 946.2,593.1 -2,-34.2 24.8,-8.8 17.4,-5.8 12,13.2 -2.6,6.2 -10,-6 -9.4,14.4 z" />
+        </a>
+
+        <a id="state_FR_Peshawar" class="state">
+          <path id="FR_Peshawar" class="shape" d="m 1120,423.1 5,-5 -1.4,-4.2 -10.2,-6.8 -4.2,7.2 -10.6,3.8 23.4,11 z" />
+        </a>
+
+        <a id="state_FR_Lakki" class="state">
+          <path id="FR_Lakki" class="shape" d="m 986.4,544.3 -7.4,-8 -2.6,-15 -13.6,16.2 6.2,12.6 z" />
+        </a>
+
+        <a id="state_FR_Kohat" class="state">
+          <path id="FR_Kohat" class="shape" d="m 1098.6,418.1 23.4,11 -13.8,11.2 -8,0.8 -3,-5.4 4.2,-4.8 -18.4,-3.6 6.2,-12.2 z" />
+        </a>
+
+        <a id="state_FR_D_I_Khan" class="state">
+          <path id="FR_D_I_Khan" class="shape" d="m 951.2,614.5 6.8,3.4 2.6,27.2 18.4,60.4 -13.4,6.4 0.6,10 -3,0.4 -2.4,-5 4,-24.8 -1.4,-17 -16.6,8 -5.6,9.8 -2.6,-16.8 -8.6,-5.2 2.4,-43.8 -7.6,5.2 -3,-3.2 3.8,-8.2 7.6,-3.4 9.8,5 z" />
+        </a>
+
+        <a id="state_FR_Bannu" class="state">
+          <path id="FR_Bannu" class="shape" d="m 992.6,494.3 17.2,0.8 15.8,-16.4 -13.2,-5.2 -10.8,-4.2 -22.8,21.4 -18.6,27.2 2.6,19.6 13.6,-16.2 z" />
+        </a>
+
+        <a id="state_South_Waziristan" class="state">
+          <path id="South_Waziristan" class="shape" d="m 890.4,557.3 13.4,-3.4 1.6,-9.6 22.4,0 35,-6.8 6.2,12.6 -24.8,8.8 2,34.2 5,21.4 -8.2,8.4 -9.8,-5 -7.6,3.4 -7.2,-4.6 3,-9.6 -16.8,4.6 -10.6,11.6 -21.8,-1 -4.6,-19.2 0.8,-27.6 -4.8,-11 4.8,-10.2 10,-4 z" />
+        </a>
+
+        <a id="state_Orakzai" class="state">
+          <path id="Orakzai" class="shape" d="m 1089.2,415.1 -6.2,12.2 -10.2,1.8 -16.6,-11.6 -6,0.6 -2.4,15.8 -16.6,3 -17,-2.8 -17,-18.2 13.2,4.4 36.6,-19.3 23.2,14.1 z" />
+        </a>
+
+        <a id="state_North_Waziristan" class="state">
+          <path id="North_Waziristan" class="shape" d="m 972.4,461.3 24.4,2.2 4.8,5.8 -22.8,21.4 -18.6,27.2 2.6,19.6 -35,6.8 -22.4,0 -1.6,9.6 -13.4,3.4 -12,-7 6.4,-11 -5.8,-11.4 7.2,-9.8 7,-2.4 -4.2,-8.6 1.6,-10 7.2,-7.8 14.2,0.4 6.4,-3.8 9,3.6 14.6,-5.4 4.6,-8.2 8.8,-0.8 z"/>
+        </a>
+
+        <a id="state_Mohmand" class="state">
+          <path id="Mohmand" class="shape" d="m 1048.4,317.6 2.8,-13.8 12.6,11 18.4,-5.4 7,18.4 13.4,-3.4 5,8.8 -21.8,29.4 -9.8,13 -24,-19.4 4.8,-12.4 -9.2,-3.8 -7.2,-7.4 -0.2,-12.2 z" />
+        </a>
+
+        <a id="state_Kurram" class="state">
+          <path id="Kurram" class="shape" d="m 940.4,416.1 -14.6,-23.8 3.8,-9.9 11.4,-2.4 22.6,8.6 15.4,2.4 18.2,24.9 17,18.2 -3.2,10 -23.4,8.2 9.2,11.2 -24.4,-2.2 -3.8,-10.4 -11.4,-10.8 1.6,-13.2 -6.6,-9.4 z" />
+        </a>
+
+        <a id="state_Khyber" class="state">
+          <path id="Khyber" class="shape" d="m 1076,375.6 5,25.9 8,4.6 0.2,9 -19,0 -23.2,-14.1 -36.6,19.3 -13.2,-4.4 -18.2,-24.9 37.6,-0.2 29.8,-11.2 6,-12.8 -0.4,-10.6 z" />
+        </a>
+
+        <a id="state_Bajur" class="state">
+          <path id="Bajur" class="shape" d="m 1061.6,299.6 -10.4,4.2 12.6,11 18.4,-5.4 7,18.4 13.4,-3.4 3.8,-10 8.6,-5 0.4,-13.6 -15.6,-4.2 -10,-17 -18.8,10.2 z" />
+        </a>
+
+        <path id="FATA_Border" fill="none" stroke="#a08070" d="m 1040.2,320.4 0.2,12.2 7.2,7.4 9.2,3.8 -4.8,12.4 0.4,10.6 -6,12.8 -29.8,11.2 -37.6,0.2 -15.4,-2.4 -22.6,-8.6 -11.4,2.4 -3.8,9.9 14.6,23.8 11.8,1.4 6.6,9.4 -1.6,13.2 11.4,10.8 3.8,10.4 -17,13.8 -8.8,0.8 -4.6,8.2 -14.6,5.4 -9,-3.6 -6.4,3.8 -14.2,-0.4 -7.2,7.8 -1.6,10 4.2,8.6 -7,2.4 -7.2,9.8 5.8,11.4 -6.4,11 -10,4 -4.8,10.2 4.8,11 -0.8,27.6 4.6,19.2 21.8,1 10.6,-11.6 16.8,-4.6 -3,9.6 7.2,4.6 -3.8,8.2 3,3.2 7.6,-5.2 -2.4,43.8 8.6,5.2 2.6,16.8 5.6,-9.8 16.6,-8 1.4,17 -4,24.8 2.4,5 3,-0.4 -0.6,-10 13.4,-6.4 -18.4,-60.4 -2.6,-27.2 -6.8,-3.4 -5,-21.4 30.2,-21 9.4,-14.4 10,6 2.6,-6.2 -12,-13.2 -7.4,-8 -2.6,-15 16.2,-27 17.2,0.8 15.8,-16.4 -13.2,-5.2 -10.8,-4.2 -4.8,-5.8 -9.2,-11.2 23.4,-8.2 3.2,-10 17,2.8 16.6,-3 2.4,-15.8 6,-0.6 16.6,11.6 10.2,-1.8 18.4,3.6 -4.2,4.8 3,5.4 8,-0.8 13.8,-11.2 -2,-6 5,-5 -1.4,-4.2 -10.2,-6.8 -4.2,7.2 -10.6,3.8 -9.4,-3 -0.2,-9 -8,-4.6 -5,-25.9 9.8,-13 21.8,-29.4 -5,-8.8 3.8,-10 8.6,-5 0.4,-13.6 -15.6,-4.2 -10,-17 -18.8,10.2 -9.4,14.8 -10.4,4.2 -2.8,13.8 z"/>
+      </g>
+
+      <g id="AJK" transform="translate(-27.1,-28.1)">
+
+        <a id="state_Muzaffarabad" class="state">
+          <path id="Muzaffarabad" class="shape" d="m 1286.4,319.8 -6.6,19.8 8.1358,31.8294 21.1872,5.4008 -7.8683,-19.2999 10.0832,2.6783 4.8684,-15.9273 0.3937,-7.4813 0.1419,-14.4456 L 1303,320.8 z" />
+        </a>
+
+        <a id="state_Hattian" class="state">
+          <path id="Hattian" class="shape" d="m 1309.123,376.8302 18.077,1.9698 9.8,-21.2 -8.2,-14.4 -5.8,2.4 -6.7937,-1.3187 -4.8684,15.9273 -10.0832,-2.6783 z" />
+        </a>
+
+        <a id="state_Poonch" class="state">
+          <path id="Poonch" class="shape" d="m 1294.4634,397.8229 2.0898,8.7238 10.0396,-4.0808 27.8072,14.2341 11.2,-11.6 -9.0542,-12.7521 -9.1935,0.5952 -10.6763,5.6541 -13.126,-12.6107 z" />
+        </a>
+
+        <a id="state_Sudhnati" class="state">
+          <path id="Sudhnati" class="shape" d="m 1296.5532,406.5467 3.2468,13.5533 13.9104,12.7197 27.8896,0.6803 -7.2,-16.8 -27.8072,-14.2341 z" />
+        </a>
+
+        <a id="state_Kotli" class="state">
+          <path id="Kotli" class="shape" d="m 1299.8,420.1 -3,8.6 6.2,11.2 -2.4779,7.114 10.8158,-1.3981 17.2007,27.3779 L 1340,472.1 l 15.8,-12.4 1.6,-14 -9.8,-12.2 -6,0 -27.8896,-0.6803 z" />
+        </a>
+
+        <a id="state_Mirpur" class="state">
+          <path id="Mirpur" class="shape" d="m 1300.5221,447.014 -3.7221,10.686 9.2,24.8 -3.2,7.2 17.6,9.8 8.1386,-26.5062 -16.9042,-27.6755 z" />
+        </a>
+
+        <a id="state_Bhimber" class="state">
+          <path id="Bhimber" class="shape" d="M 1328.5386,472.9938 1320.4,499.5 l 11.6,-3 9,10 30.8,15 12.8,-0.4 -3.8,-10 -10.2,-2.4 2.8,-11.4 -14,-2.8 -19.4,-22.4 z" />
+        </a>
+
+        <a id="state_Neelum" class="state">
+          <path id="Neelum" class="shape" d="m 1303,320.8 13.7419,1.5544 -0.1419,14.4456 12,-9.2 -0.2,-5.8 5.2,-3.2 1.2,-14 19,0 15.8,-12 27.2,3.4 9.2,8 23.2,2 11.6,4.8 20.6,-0.8 4.4,-6.8 -2.6,-11.4 -10.2,-9.8 -5.6,8.6 -5.6,-2.6 -7,6.4 -33.8,-15.2 -4,-16 -9.2,-9.8 -24.6,8.4 -10.6,-5.6 -6.6,7.4 2.8,4.2 -11.4,18.6 -25.4,11 z"/>
+        </a>
+
+        <a id="state_Haveli" class="state">
+          <path id="Haveli" class="shape" d="m 1327.2,378.8 33.2,1.4 4.6,13 -9.2,9.8 -10.2,2.1 -9.0542,-12.7521 z" />
+        </a>
+
+        <a id="state_Bagh" class="state">
+          <path id="Bagh" class="shape" d="m 1327.2,378.8 -18.077,-1.9698 -21.1872,-5.4008 6.5276,26.3935 9.0866,-11.8364 13.126,12.6107 10.6763,-5.6541 9.1935,-0.5952 z" />
+        </a>
+
+        <path id="AJK_Border" fill="none" stroke="#a08070" d="m 1296.8,457.7 6.6,17.8 2.6,7 -3.2,7.2 17.6,9.8 11.6,-3 9,10 30.8,15 12.8,-0.4 -3.8,-10 -10.2,-2.4 2.8,-11.4 -14,-2.8 -19.4,-22.4 15.8,-12.4 1.6,-14 -9.8,-12.2 -6,0 -7.2,-16.8 11.2,-11.6 10.2,-2.1 9.2,-9.8 -4.6,-13 -33.2,-1.4 9.8,-21.2 -8.2,-14.4 -5.8,2.4 -6.8,-1.2 0.4,-7.6 12,-9.2 -0.2,-5.8 5.2,-3.2 1.2,-14 19,0 15.8,-12 27.2,3.4 9.2,8 23.2,2 11.6,4.8 20.6,-0.8 4.4,-6.8 -2.6,-11.4 -10.2,-9.8 -5.6,8.6 -5.6,-2.6 -7,6.4 -33.8,-15.2 -4,-16 -9.2,-9.8 -24.6,8.4 -10.6,-5.6 -6.6,7.4 2.8,4.2 -11.4,18.6 -25.4,11 -9,23.4 -16.6,-1 -3,9 -3.6,10.8 11.4,44.6 8.6,35.9 -3,8.6 6.2,11.2 z"/>
+      </g>
+
+      <g id="Gilgit-Baltistan" transform="translate(-27.1,-28.1)">
+
+        <a id="state_Ghizer" class="state">
+          <path id="Ghizer" class="shape" d="m 1349.3534,106.34004 -4.7964,20.57918 8.5935,11.78808 -3.5973,20.37939 -14.389,14.18565 -45.3655,-2.59737 -19.8674,-6.52955 L 1252.2,174 l -4.8,-2.8 -9.8,3.4 -15.2,-2.6 -15.4,4.4 -15.8,-9.4 5.2,-12.4 -4.4,-7.4 2.6,-17.4 30.8,-18.4 2.8,-8.6 7.4,-1.4 11.5594,-15.72187 L 1244.6,78 l 32.4,-8.6 21.4,4.8 26.2,0 0.6,-9 -12.8,-5.4 -8.4,-8.2 19.2,-0.4 12,7 9,1 29.9346,25.56186 z"/>
+        </a>
+
+        <a id="state_Diamer" class="state">
+          <path id="Diamer" class="shape" d="m 1415.5031,228.2168 -11.9909,-30.7689 -14.7887,7.5923 -23.5821,-8.7911 -29.9772,-22.97676 -45.3655,-2.59737 -19.785,-8.39151 L 1252.2,174 l -0.5723,11.6598 15.9878,13.9859 52.9598,12.9868 -9.3929,9.9899 -1.3989,11.3885 2.9977,11.1887 18.5859,1.5984 21.1839,9.3905 10.5919,5.5943 24.5813,-8.3915 7.994,-10.7891 z"/>
+        </a>
+
+        <a id="state_Astore" class="state">
+          <path id="Astore" class="shape" d="m 1463.8663,256.5881 5.7956,-6.7932 -8.5934,-10.5892 -8.3936,-15.1847 -25.9803,-22.1776 3.3974,-10.5892 -13.9893,-4.7952 -1.399,-13.58626 -8.9931,1.99798 -2.1984,22.57718 11.9909,30.7689 -19.7849,14.3854 -7.994,10.7891 9.193,9.7901 3.997,15.9838 33.7743,15.1847 6.9947,-6.3936 5.5958,2.5974 5.5957,-8.5913 10.9916,-8.5913 z"/>
+        </a>
+
+        <a id="state_Hunza-Nagar" class="state">
+          <path id="Hunza-Nagar" class="shape" d="M 1523.4211,154.09174 1533.4,146.6 l -0.8,-7.6 8.2,-3.6 -1.8,-5.8 5.2,-0.6 -7,-13.4 2.6,-12 -8,-13.4 -1.2,-7 -18.8,-14.6 -18.4,-2.2 -1.4,5 -7.8,0.2 -6.4,-21.8 1.4,-3.6 -23.8,-5.4 -1.8,-3.6 -11.8,0.8 -10.8,9 -7.2,-6.4 -2.2,-8.4 -7.8,4.8 -6.6,-8.4 -7.2,1.4 -4,5.6 -0.8,8 -4.6,-4 -9.8,0.4 -16.6,10.8 -10.2,-1 -2.4,7.2 -7.4,2.2 29.9346,25.56186 -24.7812,21.57818 8.4091,21.85994 16.0573,14.78579 21.6242,-4.65702 14.8694,8.77567 18.9792,4.19015 12.1908,-6.39353 5.5957,7.59232 16.7872,-19.5802 14.3891,-4.19576 18.1862,12.38748 17.5866,1.99797 z"/>
+        </a>
+
+        <a id="state_Gilgit" class="state">
+          <path id="Gilgit" class="shape" d="m 1410.3134,147.10442 18.9792,4.19015 8.9932,20.77898 -22.1831,14.38545 -1.399,-13.58626 -8.9931,1.99798 -2.1984,22.57718 -14.7887,7.5923 -23.5821,-8.7911 -29.9772,-22.97676 14.389,-14.18565 3.5973,-20.37939 -8.5935,-11.78808 4.7964,-20.57918 8.4091,21.85994 16.0573,14.78579 21.6242,-4.65702 z"/>
+        </a>
+
+        <a id="state_Ghanhce" class="state">
+          <path id="Ghanhce" class="shape" d="m 1581.1772,193.6517 -33.5745,20.3794 -13.3898,28.1715 31.576,17.9818 21.1839,6.1938 -0.7728,26.8218 8.8,4.2 12.6,-0.6 6.8,-19.2 24.225,-1.1719 1.575,-10.8281 14.4,-2.4 -17.2,-31.8 -22,-25.6 -11.8398,12.6267 z" />
+        </a>
+
+        <a id="state_Skardu" class="state">
+          <path id="Skardu" class="shape" d="m 1463.8663,273.3711 -10.9916,8.5913 10.3253,9.8376 2.6,11.4 -4.4,6.8 17,11.4 35.4,3.8 30,-18.2 9,3.6 33.4,-17.4 0.7728,-26.8218 -21.1839,-6.1938 -31.576,-17.9818 13.3898,-28.1715 33.5745,-20.3794 22.383,24.775 11.8398,-12.6267 -0.2,-13.4 -8.8,-9.2 -8,-4 -0.8,-13.8 -3.2,-1.4 -17,5.8 -4.8,3.8 -16.2,0 -1.6,-11.2 -6.8,-9.6 -9.0875,-0.49062 -5.5125,-5.70938 -9.9789,7.49174 -9.3929,-10.98889 -17.5866,-1.99797 -18.1862,-12.38748 -14.3891,4.19576 -16.7872,19.5802 -5.5957,-7.59232 -12.1908,6.39353 8.9932,20.77898 -22.1831,14.38545 13.9893,4.7952 -3.3974,10.5892 25.9803,22.1776 8.3936,15.1847 8.5934,10.5892 -5.7956,6.7932 z"/>
+        </a>
+
+        <path id="Gilgit_Baltistan_Border" fill="none" stroke="#a08070" d="m 1530.6,83.2 -18.8,-14.6 -18.4,-2.2 -1.4,5 -7.8,0.2 -6.4,-21.8 1.4,-3.6 -23.8,-5.4 -1.8,-3.6 -11.8,0.8 -10.8,9 -7.2,-6.4 -2.2,-8.4 -7.8,4.8 -6.6,-8.4 -7.2,1.4 -4,5.6 -0.8,8 -4.6,-4 -9.8,0.4 -16.6,10.8 -10.2,-1 -2.4,7.2 -7.4,2.2 -9,-1 -12,-7 -19.2,0.4 8.4,8.2 12.8,5.4 -0.6,9 -26.2,0 -21.4,-4.8 -32.4,8.6 2.6,7.8 -11.6,15.6 -7.4,1.4 -2.8,8.6 -30.8,18.4 -2.6,17.4 4.4,7.4 -5.2,12.4 15.8,9.4 15.4,-4.4 15.2,2.6 9.8,-3.4 4.8,2.8 -0.6,11.6 16,14 53,13 -9.4,10 -1.4,11.4 3,11.2 18.6,1.6 21.2,9.4 10.6,5.6 24.6,-8.4 9.2,9.8 4,16 33.8,15.2 7,-6.4 5.6,2.6 5.6,-8.6 10.2,9.8 2.6,11.4 -4.4,6.8 17,11.4 35.4,3.8 30,-18.2 9,3.6 33.4,-17.4 8.8,4.2 12.6,-0.6 6.8,-19.2 24.2,-1 1.6,-11 14.4,-2.4 -17.2,-31.8 -22,-25.6 -0.2,-13.4 -8.8,-9.2 -8,-4 -0.8,-13.8 -3.2,-1.4 -17,5.8 -4.8,3.8 -16.2,0 -1.6,-11.2 -6.8,-9.6 -9,-0.4 -5.6,-5.8 -0.8,-7.6 8.2,-3.6 -1.8,-5.8 5.2,-0.6 -7,-13.4 2.6,-12 -8,-13.4 z"/>
+      </g>
+        </svg>
+            <!-- Dots injected by JS -->
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        &copy; 2026 BioScout &mdash; Islamabad Biodiversity Observatory
+    </div>
+
+    <!-- ============ JAVASCRIPT ============ -->
+    <script>
+    (function() {
+        const TOTAL_FRAMES = 192;
+        const IMAGE_BASE   = "{{ url_for('static', filename='images/frames/') }}";
+        const canvas        = document.getElementById('frame-canvas');
+        const ctx           = canvas.getContext('2d');
+        const loader        = document.getElementById('loader');
+        const loaderBar     = document.getElementById('loader-bar');
+
+        // Overlay elements
+        const overlays = [
+            { el: document.getElementById('overlay-1'), start: 0.00, peak: 0.05, end: 0.18 },
+            { el: document.getElementById('overlay-2'), start: 0.20, peak: 0.30, end: 0.42 },
+            { el: document.getElementById('overlay-3'), start: 0.48, peak: 0.58, end: 0.70 },
+            { el: document.getElementById('overlay-4'), start: 0.75, peak: 0.83, end: 0.95 },
+        ];
+
+        // Build frame filenames
+        function frameName(i) {
+            const idx = String(i).padStart(3, '0');
+            return `frame_${idx}_delay-0.041s.jpg`;
+        }
+
+        // ---------- PRELOAD ----------
+        const images = new Array(TOTAL_FRAMES);
+        let loaded = 0;
+
+        function preloadImages() {
+            return new Promise((resolve) => {
+                for (let i = 0; i < TOTAL_FRAMES; i++) {
+                    const img = new Image();
+                    img.src = IMAGE_BASE + frameName(i);
+                    img.onload = img.onerror = () => {
+                        loaded++;
+                        loaderBar.style.width = ((loaded / TOTAL_FRAMES) * 100) + '%';
+                        if (loaded >= TOTAL_FRAMES) resolve();
+                    };
+                    images[i] = img;
+                }
+            });
+        }
+
+        // ---------- CANVAS SIZING ----------
+        function sizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width  = window.innerWidth  * dpr;
+            canvas.height = window.innerHeight * dpr;
+            canvas.style.width  = window.innerWidth  + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            ctx.scale(dpr, dpr);
+        }
+
+        // ---------- DRAW FRAME (contain fit) ----------
+        let currentFrame = -1;
+
+        function drawFrame(index) {
+            if (index === currentFrame) return;
+            currentFrame = index;
+
+            const img = images[index];
+            if (!img || !img.complete) return;
+
+            const cw = window.innerWidth;
+            const ch = window.innerHeight;
+            const iw = img.naturalWidth;
+            const ih = img.naturalHeight;
+
+            // Contain fit
+            const scale = Math.min(cw / iw, ch / ih);
+            const dw = iw * scale;
+            const dh = ih * scale;
+            const dx = (cw - dw) / 2;
+            const dy = (ch - dh) / 2;
+
+            ctx.clearRect(0, 0, cw, ch);
+            ctx.drawImage(img, dx, dy, dw, dh);
+        }
+
+        // ---------- OVERLAY OPACITY ----------
+        function updateOverlays(progress) {
+            overlays.forEach(o => {
+                let opacity = 0;
+                if (progress >= o.start && progress <= o.end) {
+                    if (progress <= o.peak) {
+                        // Fade in
+                        opacity = (progress - o.start) / (o.peak - o.start);
+                    } else {
+                        // Fade out
+                        opacity = 1 - (progress - o.peak) / (o.end - o.peak);
+                    }
+                    opacity = Math.max(0, Math.min(1, opacity));
+                }
+                o.el.style.opacity = opacity;
+                o.el.classList.toggle('active', opacity > 0.01);
+            });
+        }
+
+        // ---------- SCROLL HANDLER ----------
+        let ticking = false;
+
+        function onScroll() {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(() => {
+                const scrollTop = window.scrollY;
+                const maxScroll = document.getElementById('scroll-container').offsetHeight - window.innerHeight;
+                const progress  = Math.min(Math.max(scrollTop / maxScroll, 0), 1);
+
+                // Map progress → frame index
+                const frameIndex = Math.min(Math.floor(progress * TOTAL_FRAMES), TOTAL_FRAMES - 1);
+                drawFrame(frameIndex);
+                updateOverlays(progress);
+
+                ticking = false;
+            });
+        }
+
+        // ---------- INIT ----------
+        async function init() {
+            sizeCanvas();
+            window.addEventListener('resize', () => {
+                sizeCanvas();
+                if (currentFrame >= 0) {
+                    currentFrame = -1; // force redraw
+                    drawFrame(Math.min(Math.floor((window.scrollY / (document.getElementById('scroll-container').offsetHeight - window.innerHeight)) * TOTAL_FRAMES), TOTAL_FRAMES - 1));
+                }
+            });
+
+            await preloadImages();
+
+            // Hide loader
+            loader.classList.add('hidden');
+            setTimeout(() => loader.style.display = 'none', 700);
+
+            // Draw first frame
+            drawFrame(0);
+            updateOverlays(0);
+
+            // Listen
+            window.addEventListener('scroll', onScroll, { passive: true });
+        }
+
+        init();
+    })();
+
+    // ===== SIGHTING MAP: Fetch & plot dots =====
+    (function() {
+        const mapWrap = document.getElementById('mapWrap');
+        if (!mapWrap) return;
+
+        // Pakistan approximate bounding box for mapping lat/lng → SVG coords
+        const PAK = { latMin: 23.35, latMax: 37.2, lngMin: 60.55, lngMax: 76.9 };
+        const SVG_W = 1628, SVG_H = 1544;
+
+        // City name → approximate SVG center coordinates (derived from district paths + label positions)
+        // These account for the translate(-27.1,-28.1) transform applied to province groups
+        const CITY_SVG = {
+            'Islamabad':          { x: 1219, y: 398 },
+            'Rawalpindi':         { x: 1230, y: 440 },
+            'Lahore':             { x: 1350, y: 662 },
+            'Karachi':            { x: 640,  y: 1400 },
+            'Peshawar':           { x: 1062, y: 390 },
+            'Quetta':             { x: 630,  y: 810 },
+            'Faisalabad':         { x: 1230, y: 710 },
+            'Multan':             { x: 1080, y: 850 },
+            'Sialkot':            { x: 1370, y: 555 },
+            'Gujranwala':         { x: 1330, y: 580 },
+            'Hyderabad':          { x: 790,  y: 1380 },
+            'Sukkur':             { x: 850,  y: 1140 },
+            'Abbottabad':         { x: 1260, y: 348 },
+            'Mansehra':           { x: 1240, y: 318 },
+            'Swat':               { x: 1180, y: 240 },
+            'Mardan':             { x: 1140, y: 340 },
+            'Chitral':            { x: 1130, y: 145 },
+            'Gilgit':             { x: 1375, y: 160 },
+            'Skardu':             { x: 1480, y: 200 },
+            'Muzaffarabad':       { x: 1280, y: 320 },
+            'Gwadar':             { x: 195,  y: 1370 },
+            'Zhob':               { x: 850,  y: 685 },
+            'Dera Ismail Khan':   { x: 994,  y: 630 },
+            'Bahawalpur':         { x: 1090, y: 970 },
+            'Sahiwal':            { x: 1210, y: 780 },
+            'Larkana':            { x: 768,  y: 1140 },
+            'Mirpur':             { x: 1310, y: 470 },
+            'Dera Ghazi Khan':    { x: 980,  y: 790 },
+            'Nawabshah':          { x: 760,  y: 1260 },
+            'Turbat':             { x: 310,  y: 1300 },
+        };
+
+        function toSVG(lat, lng) {
+            const x = ((lng - PAK.lngMin) / (PAK.lngMax - PAK.lngMin)) * SVG_W;
+            const y = SVG_H - ((lat - PAK.latMin) / (PAK.latMax - PAK.latMin)) * SVG_H;
+            return { x, y };
+        }
+
+        function placeDot(pos, s) {
+            if (pos.x < 0 || pos.x > SVG_W || pos.y < 0 || pos.y > SVG_H) return;
+            const dot = document.createElement('div');
+            dot.className = 'sighting-dot';
+            dot.style.left = (pos.x / SVG_W * 100) + '%';
+            dot.style.top  = (pos.y / SVG_H * 100) + '%';
+            const tip = document.createElement('span');
+            tip.className = 'dot-tooltip';
+            tip.textContent = `${s.species} — ${s.location}${s.city ? ', ' + s.city : ''} (${s.date})`;
+            dot.appendChild(tip);
+            mapWrap.appendChild(dot);
+        }
+
+        fetch('/api/sighting-locations')
+            .then(r => r.json())
+            .then(spots => {
+                spots.forEach(s => {
+                    // Priority 1: use GPS lat/lng if available
+                    if (s.lat && s.lng) {
+                        placeDot(toSVG(s.lat, s.lng), s);
+                    }
+                    // Priority 2: fallback to city-based SVG coordinates
+                    else if (s.city && CITY_SVG[s.city]) {
+                        placeDot(CITY_SVG[s.city], s);
+                    }
+                    // else: no coordinates available, skip
+                });
+            })
+            .catch(err => console.log('Map data unavailable:', err));
+    })();
+    </script>
+
+</body>
+</html>

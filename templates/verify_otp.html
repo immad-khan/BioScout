@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioScout - Verify Email</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background-image: url("{{ url_for('static', filename='images/bio1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+
+        .auth-container {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 50px;
+            border-radius: 20px;
+            width: 400px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            color: #fff;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+            color: #fff;
+        }
+
+        .subtitle {
+            color: #bdc3c7;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        .subtitle strong {
+            color: #2ecc71;
+        }
+
+        .otp-inputs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .otp-inputs input {
+            width: 50px;
+            height: 55px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            transition: 0.3s;
+        }
+
+        .otp-inputs input:focus {
+            outline: none;
+            background: rgba(0, 0, 0, 0.5);
+            border-color: #2ecc71;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
+        }
+
+        /* Hidden input for form submission */
+        #otp-hidden { display: none; }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+        }
+
+        .links {
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        .links a {
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .links a:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
+
+        .flash-messages { margin-bottom: 20px; }
+
+        .alert {
+            padding: 10px;
+            border-radius: 5px;
+            list-style: none;
+        }
+
+        .alert-error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #ffcccc;
+        }
+
+        .alert-success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+            color: #ccffdd;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <h1>Verify Email</h1>
+        <p class="subtitle">Enter the 6-digit code sent to<br><strong>{{ email }}</strong></p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                {% for category, message in messages %}
+                    <li class="alert alert-{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('verify_otp') }}" method="POST" id="otp-form">
+            <div class="otp-inputs">
+                <input type="text" maxlength="1" class="otp-box" autofocus>
+                <input type="text" maxlength="1" class="otp-box">
+                <input type="text" maxlength="1" class="otp-box">
+                <input type="text" maxlength="1" class="otp-box">
+                <input type="text" maxlength="1" class="otp-box">
+                <input type="text" maxlength="1" class="otp-box">
+            </div>
+            <input type="hidden" name="otp" id="otp-hidden">
+            <button type="submit">Verify & Create Account</button>
+        </form>
+
+        <div class="links">
+            <p><a href="{{ url_for('signup') }}">Back to Sign Up</a></p>
+        </div>
+    </div>
+
+    <script>
+        const boxes = document.querySelectorAll('.otp-box');
+        const form = document.getElementById('otp-form');
+        const hiddenInput = document.getElementById('otp-hidden');
+
+        boxes.forEach((box, i) => {
+            box.addEventListener('input', (e) => {
+                if (e.target.value && i < boxes.length - 1) boxes[i + 1].focus();
+            });
+            box.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && i > 0) boxes[i - 1].focus();
+            });
+            // Allow paste of full OTP
+            box.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const data = (e.clipboardData || window.clipboardData).getData('text').trim();
+                if (/^\d{6}$/.test(data)) {
+                    data.split('').forEach((ch, idx) => { if (boxes[idx]) boxes[idx].value = ch; });
+                    boxes[5].focus();
+                }
+            });
+        });
+
+        form.addEventListener('submit', () => {
+            hiddenInput.value = Array.from(boxes).map(b => b.value).join('');
+        });
+    </script>
+
+</body>
+</html>

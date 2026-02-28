@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Species Observation Form</title>
+    <!-- Import Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex; /* Flex container for split layout */
+        }
+        
+        /* Left Panel - Image and Text */
+        .left-panel {
+            flex: 1; /* Takes up 50% or available space */
+            background-image: url("{{ url_for('static', filename='images/bio1.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+        .left-panel::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.3); /* Overlay for text readability */
+        }
+        /* Fade-to-black transition on right edge */
+        .left-panel::after {
+            content: "";
+            position: absolute;
+            top: 0; right: 0;
+            width: 120px; height: 100%;
+            background: linear-gradient(to right, transparent, #000000);
+            z-index: 1;
+        }
+        .left-panel-content {
+            position: absolute;
+            bottom: 150px;
+            left: 40px;
+            z-index: 2;
+            color: #ffffff;
+        }
+        .left-panel-content h1 {
+            font-size: 5rem;
+            font-weight: 800;
+            margin: 0;
+            text-transform: uppercase;
+            line-height: 1;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* Right Panel - Form */
+        .right-panel {
+            flex: 1; /* Takes up 50% */
+            background-color: #000000; /* Black background */
+            background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #000000 100%); /* Subtle gradient */
+            display: flex;
+            align-items: flex-start; /* Changed from center to start below nav */
+            justify-content: center;
+            padding: 100px 40px 40px; /* Added top padding to clear nav */
+            overflow-y: auto; /* Scroll if form is tall */
+            max-height: 100vh; /* Ensure independent scrolling if needed */
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            color: #ffffff;
+            /* Glassmorphism Effect over Black */
+            background: rgba(255, 255, 255, 0.05); /* Very subtle white tint */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        h2 {
+            text-align: center;
+            font-family: 'Playfair Display', serif; /* Elegant heading font */
+            font-weight: 700;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            margin-top: 0;
+            background: linear-gradient(to right, #4cd137, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0px 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: -0.5px;
+        }
+        .links {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .links a {
+            color: #4cd137; /* Bright green link */
+            text-decoration: none;
+            font-weight: 500;
+            margin: 0 15px;
+            transition: color 0.3s;
+            font-size: 0.9rem;
+        }
+        .links a:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+        input[type="text"],
+        input[type="date"],
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border: 1px solid #333; /* Dark border */
+            border-radius: 8px;
+            font-size: 1rem;
+            background-color: #1a1a1a; /* Dark input background */
+            color: #fff;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+        input[type="text"]:focus,
+        input[type="date"]:focus,
+        textarea:focus {
+            background-color: #222;
+            border-color: #4cd137; /* Green highlight */
+            outline: none;
+            box-shadow: 0 0 8px rgba(76, 209, 55, 0.2);
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 10px 0;
+            margin-bottom: 10px;
+            color: #aaa;
+        }
+        /* Custom file input text color fix for browsers */
+        input[type="file"]::file-selector-button {
+            border: none;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 15px;
+            transition: background 0.3s;
+        }
+        input[type="file"]::file-selector-button:hover {
+            background: #444;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        input[type="submit"] {
+            width: 100%;
+            background: linear-gradient(135deg, #4cd137 0%, #44bd32 100%);
+            color: white;
+            border: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 15px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+        input[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            filter: brightness(110%);
+        }
+        input[type="submit"]:active {
+            transform: translateY(0);
+        }
+        .note {
+            color: #777;
+            font-size: 0.8rem;
+            margin-top: -10px;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+        .notification {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+            display: none;
+        }
+        .success {
+            background-color: rgba(21, 87, 36, 0.2); /* Transparent dark green */
+            color: #4cd137;
+            border: 1px solid #1e4620;
+        }
+        .error {
+            background-color: rgba(114, 28, 36, 0.2);
+            color: #e84118;
+            border: 1px solid #721c24;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 15px 0;
+        }
+        /* Mobile adjustment */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            .left-panel {
+                min-height: 300px; /* Reduced height on mobile */
+                flex: none;
+            }
+            .right-panel {
+                flex: none;
+                padding: 20px;
+            }
+            .left-panel-content h1 {
+                font-size: 2.5rem;
+            }
+        }
+        /* ... existing loading animation ... */
+        .loading span {
+            display: inline-block;
+            height: 15px;
+            width: 15px;
+            background-color: #4cd137;
+            border-radius: 50%;
+            margin: 0 3px;
+            animation: pulse 1.4s infinite ease-in-out;
+        }
+        .loading span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .loading span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(0.5);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        /* ===== TOP NAV ===== */
+        .topnav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 40px;
+            background: linear-gradient(to bottom, rgba(5,5,5,0.9), transparent);
+            pointer-events: none;
+        }
+        .topnav * { pointer-events: auto; }
+        .topnav-logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+        .topnav-logo span { color: #2ecc71; }
+        .topnav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+            margin: 0; padding: 0;
+        }
+        .topnav-links a {
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 400;
+            letter-spacing: 0.5px;
+            transition: color 0.3s;
+        }
+        .topnav-links a:hover { color: #fff; }
+        @media (max-width: 768px) {
+            .topnav { padding: 16px 20px; }
+            .topnav-links { gap: 16px; }
+            .topnav-links a { font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+    <a href="{{ url_for('landing') }}" class="topnav-logo">Bio<span>Scout</span></a>
+    <ul class="topnav-links">
+        <li><a href="{{ url_for('serve_form') }}" style="color:#fff;">Submit</a></li>
+        <li><a href="{{ url_for('view_observations') }}">Observations</a></li>
+        <li><a href="{{ url_for('serve_qa_page') }}">Q&A</a></li>
+        {% if current_user.is_authenticated %}
+            <li><a href="{{ url_for('my_observations') }}">My Submissions</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        {% else %}
+            <li><a href="{{ url_for('login') }}">Login</a></li>
+            <li><a href="{{ url_for('signup') }}">Sign Up</a></li>
+        {% endif %}
+    </ul>
+</nav>
+
+<div class="left-panel">
+    <div class="left-panel-content">
+        <h1>I'm mad</h1>
+    </div>
+</div>
+
+<div class="right-panel">
+    <div class="container">
+        <h2>Species Observation Form</h2>
+        <!-- nav links moved to topnav -->
+
+        <!-- Notification messages -->
+        <div id="successNotification" class="notification success">
+            Your observation has been successfully submitted!
+        </div>
+        <div id="errorNotification" class="notification error">
+            There was an error submitting your observation. Please try again.
+        </div>
+
+        <form id="observationForm" method="post" enctype="multipart/form-data">
+            <label for="species">Species Name:</label>
+            <input type="text" id="species" name="species" required placeholder="Enter species name" />
+
+            <label for="date">Date Observed:</label>
+            <input type="date" id="date" name="date" required />
+
+            <label for="city">City:</label>
+            <select id="city" name="city" required style="
+                width:100%; padding:12px 14px; margin-bottom:6px; border-radius:8px;
+                background:#1a1a1a; color:#ecf0f1; border:1px solid #333; font-size:0.95rem;
+                font-family:'Poppins',sans-serif; appearance:none;
+                background-image:url('data:image/svg+xml;utf8,<svg fill=\'%232ecc71\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>');
+                background-repeat:no-repeat; background-position:right 12px center; background-size:18px;
+            ">
+                <option value="" disabled selected>Select a city</option>
+                <option>Islamabad</option>
+                <option>Rawalpindi</option>
+                <option>Lahore</option>
+                <option>Karachi</option>
+                <option>Peshawar</option>
+                <option>Quetta</option>
+                <option>Faisalabad</option>
+                <option>Multan</option>
+                <option>Sialkot</option>
+                <option>Gujranwala</option>
+                <option>Hyderabad</option>
+                <option>Sukkur</option>
+                <option>Abbottabad</option>
+                <option>Mansehra</option>
+                <option>Swat</option>
+                <option>Mardan</option>
+                <option>Chitral</option>
+                <option>Gilgit</option>
+                <option>Skardu</option>
+                <option>Muzaffarabad</option>
+                <option>Gwadar</option>
+                <option>Zhob</option>
+                <option>Dera Ismail Khan</option>
+                <option>Bahawalpur</option>
+                <option>Sahiwal</option>
+                <option>Larkana</option>
+                <option>Mirpur</option>
+                <option>Dera Ghazi Khan</option>
+                <option>Nawabshah</option>
+                <option>Turbat</option>
+                <option value="Other">Other (type below)</option>
+            </select>
+            <input type="text" id="cityCustom" name="city_custom" placeholder="Enter your city" style="display:none; margin-bottom:12px;" />
+
+            <label for="location">Location:</label>
+            <input type="text" id="location" name="location" required placeholder="Enter location" />
+            <button type="button" id="gpsBtn" style="
+                background: linear-gradient(135deg,#222,#333); color:#2ecc71; border:1px solid #333;
+                border-radius:8px; padding:10px 16px; cursor:pointer; font-size:0.85rem;
+                font-weight:600; margin-bottom:20px; width:100%; transition:all 0.3s;
+            " onmouseover="this.style.borderColor='#2ecc71'" onmouseout="this.style.borderColor='#333'">Use My Location</button>
+            <input type="hidden" id="latitude" name="latitude" />
+            <input type="hidden" id="longitude" name="longitude" />
+
+            <label for="image">Upload Image:</label>
+            <input type="file" id="image" name="file" accept="image/*" />
+            <div class="note">Optional. Supported formats: jpg, png, gif. Image will be analyzed for species classification.</div>
+
+            <label for="notes">Notes:</label>
+            <textarea id="notes" name="notes" placeholder="Additional details or observations (optional)"></textarea>
+
+            <div id="loadingIndicator" class="loading">
+                <span></span><span></span><span></span>
+            </div>
+
+            <input type="submit" value="Submit" />
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('date').valueAsDate = new Date();
+
+    // City dropdown: show/hide custom input
+    document.getElementById('city').addEventListener('change', function() {
+        const custom = document.getElementById('cityCustom');
+        if (this.value === 'Other') {
+            custom.style.display = 'block';
+            custom.required = true;
+            custom.focus();
+        } else {
+            custom.style.display = 'none';
+            custom.required = false;
+            custom.value = '';
+        }
+    });
+
+    // GPS Location
+    document.getElementById('gpsBtn').addEventListener('click', function() {
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser.');
+            return;
+        }
+        this.textContent = 'Locating...';
+        this.disabled = true;
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude.toFixed(6);
+                const lng = pos.coords.longitude.toFixed(6);
+                document.getElementById('latitude').value = lat;
+                document.getElementById('longitude').value = lng;
+                document.getElementById('location').value = `Lat: ${lat}, Lng: ${lng}`;
+                this.textContent = '✅ Location captured';
+                this.disabled = false;
+            },
+            (err) => {
+                alert('Could not get your location: ' + err.message);
+                this.textContent = 'Use My Location';
+                this.disabled = false;
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+
+    document.getElementById('observationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        loadingIndicator.style.display = 'block';
+
+        document.getElementById('successNotification').style.display = 'none';
+        document.getElementById('errorNotification').style.display = 'none';
+
+        const formData = new FormData(this);
+
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            loadingIndicator.style.display = 'none';
+
+            if (response.ok) {
+                const data = await response.json();
+                const successNotification = document.getElementById('successNotification');
+                successNotification.style.display = 'block';
+
+                if (data.predicted_species && !document.getElementById('species').value) {
+                    successNotification.textContent = `Observation submitted successfully! The model identified this species as: ${data.predicted_species}`;
+                }
+
+                this.reset();
+                document.getElementById('date').valueAsDate = new Date();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            } else {
+                const errData = await response.json().catch(() => null);
+                const errorNotification = document.getElementById('errorNotification');
+                if (errData && errData.message) {
+                    errorNotification.textContent = errData.message;
+                } else {
+                    errorNotification.textContent = 'There was an error submitting your observation. Please try again.';
+                }
+                errorNotification.style.display = 'block';
+                console.error('Server returned error status:', response.status);
+            }
+        } catch (error) {
+            loadingIndicator.style.display = 'none';
+            document.getElementById('errorNotification').style.display = 'block';
+            console.error('Error submitting form:', error);
+        }
+    });
+</script>
+
+</body>
+</html>
