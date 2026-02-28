@@ -7,7 +7,7 @@
 ## ✨ Key Features
 
 *   **🔍 AI-Powered Identification:** Uses a fine-tuned **ResNet-50** model to instantly classify uploaded images of flora and fauna.
-*   **🤖 Intelligent Q&A Assistant:** A RAG (Retrieval-Augmented Generation) system powered by **Groq API** that answers user queries about local species using a curated knowledge base of text files.
+*   **🤖 Intelligent Q&A Assistant** A RAG (Retrieval-Augmented Generation) system powered by **Groq API** that answers user queries about local species using a curated knowledge base of text files.
 *   **🗺️ Interactive Sighting Map:** Visualizes observation hotspots across Pakistan with a custom SVG map and GPS coordinate tracking.
 *   **📍 Location Services:** Capturing exact GPS coordinates for precise data logging, with a city-based fallback for non-GPS entries.
 *   **📱 Responsive Glassmorphism UI:** A modern, dark-themed interface built with vanilla CSS, featuring scroll-driven animations and a premium aesthetic.
