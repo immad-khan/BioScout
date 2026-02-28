@@ -525,53 +525,61 @@ def send_otp_email(user_email, otp_code):
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        if users_collection is None:
-            flash('Database connection error. Please try again later.', 'error')
-            return redirect(url_for('signup'))
-            
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
+        try:
+            if users_collection is None:
+                flash('Database connection error. Please try again later.', 'error')
+                return redirect(url_for('signup'))
+                
+            username = request.form.get('username')
+            email = request.form.get('email')
+            password = request.form.get('password')
 
-        if not username or not email or not password:
-            flash('Please fill out all fields.', 'error')
-            return redirect(url_for('signup'))
+            if not username or not email or not password:
+                flash('Please fill out all fields.', 'error')
+                return redirect(url_for('signup'))
 
-        if users_collection.find_one({"email": email}):
-            flash('Email already exists. Please login instead.', 'error')
-            return redirect(url_for('signup'))
+            if users_collection.find_one({"email": email}):
+                flash('Email already exists. Please login instead.', 'error')
+                return redirect(url_for('signup'))
 
-        # ── Password validation ──
-        pw_errors = []
-        if len(password) < 8:
-            pw_errors.append('at least 8 characters')
-        if not re.search(r'[A-Z]', password):
-            pw_errors.append('one uppercase letter')
-        if not re.search(r'[a-z]', password):
-            pw_errors.append('one lowercase letter')
-        if not re.search(r'[0-9]', password):
-            pw_errors.append('one digit')
-        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', password):
-            pw_errors.append('one special character')
-        if pw_errors:
-            flash('Password must contain: ' + ', '.join(pw_errors) + '.', 'error')
-            return redirect(url_for('signup'))
+            # ── Password validation ──
+            pw_errors = []
+            if len(password) < 8:
+                pw_errors.append('at least 8 characters')
+            if not re.search(r'[A-Z]', password):
+                pw_errors.append('one uppercase letter')
+            if not re.search(r'[a-z]', password):
+                pw_errors.append('one lowercase letter')
+            if not re.search(r'[0-9]', password):
+                pw_errors.append('one digit')
+            if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', password):
+                pw_errors.append('one special character')
+            if pw_errors:
+                flash('Password must contain: ' + ', '.join(pw_errors) + '.', 'error')
+                return redirect(url_for('signup'))
 
-        # Generate OTP and store pending signup in session
-        otp_code = str(random.randint(100000, 999999))
-        session['pending_signup'] = {
-            'username': username,
-            'email': email,
-            'password': password,
-            'otp': otp_code,
-            'created_at': datetime.datetime.now().isoformat()
-        }
+            # Generate OTP and store pending signup in session
+            otp_code = str(random.randint(100000, 999999))
+            session['pending_signup'] = {
+                'username': username,
+                'email': email,
+                'password': password,
+                'otp': otp_code,
+                'created_at': datetime.datetime.now().isoformat()
+            }
 
-        if send_otp_email(email, otp_code):
-            flash('A verification code has been sent to your email.', 'success')
-            return redirect(url_for('verify_otp'))
-        else:
-            flash('Failed to send verification email. Please try again.', 'error')
+            if send_otp_email(email, otp_code):
+                flash('A verification code has been sent to your email.', 'success')
+                return redirect(url_for('verify_otp'))
+            else:
+                flash('Failed to send verification email. Please try again.', 'error')
+                return redirect(url_for('signup'))
+
+        except Exception as e:
+            print(f"Error during signup: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('An unexpected error occurred during signup. Please try again.', 'error')
             return redirect(url_for('signup'))
     
     return render_template('login.html', mode='signup')
@@ -584,58 +592,76 @@ def verify_otp():
         return redirect(url_for('signup'))
 
     if request.method == 'POST':
-        entered_otp = request.form.get('otp', '').strip()
-        
-        # Check OTP expiry (5 minutes)
-        created_at = datetime.datetime.fromisoformat(pending['created_at'])
-        if (datetime.datetime.now() - created_at).total_seconds() > 300:
-            session.pop('pending_signup', None)
-            flash('Verification code has expired. Please sign up again.', 'error')
-            return redirect(url_for('signup'))
+        try:
+            entered_otp = request.form.get('otp', '').strip()
+            
+            # Check OTP expiry (5 minutes)
+            created_at = datetime.datetime.fromisoformat(pending['created_at'])
+            if (datetime.datetime.now() - created_at).total_seconds() > 300:
+                session.pop('pending_signup', None)
+                flash('Verification code has expired. Please sign up again.', 'error')
+                return redirect(url_for('signup'))
 
-        if entered_otp == pending['otp']:
-            # OTP verified — create the account
-            hashed_password = bcrypt.generate_password_hash(pending['password']).decode('utf-8')
-            user_data = {
-                "username": pending['username'],
-                "email": pending['email'],
-                "password": hashed_password,
-                "email_verified": True,
-                "created_at": datetime.datetime.now()
-            }
-            users_collection.insert_one(user_data)
-            
-            # Send Welcome Email
-            send_welcome_email(pending['email'], pending['username'])
-            session.pop('pending_signup', None)
-            
-            flash('Account created successfully! Please log in.', 'success')
-            return redirect(url_for('login'))
-        else:
-            flash('Invalid verification code. Please try again.', 'error')
-            return redirect(url_for('verify_otp'))
+            if entered_otp == pending['otp']:
+                # OTP verified — create the account
+                hashed_password = bcrypt.generate_password_hash(pending['password']).decode('utf-8')
+                user_data = {
+                    "username": pending['username'],
+                    "email": pending['email'],
+                    "password": hashed_password,
+                    "email_verified": True,
+                    "created_at": datetime.datetime.now()
+                }
+                users_collection.insert_one(user_data)
+                
+                # Send Welcome Email
+                send_welcome_email(pending['email'], pending['username'])
+                session.pop('pending_signup', None)
+                
+                flash('Account created successfully! Please log in.', 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('Invalid verification code. Please try again.', 'error')
+                return redirect(url_for('verify_otp'))
+        except Exception as e:
+            print(f"Error during OTP verification: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('An unexpected error occurred. Please try again.', 'error')
+            return redirect(url_for('signup'))
 
     return render_template('verify_otp.html', email=pending['email'])
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if users_collection is None:
-            flash('Database connection error. Please try again later.', 'error')
-            return redirect(url_for('login'))
+        try:
+            if users_collection is None:
+                flash('Database connection error. Please try again later.', 'error')
+                return redirect(url_for('login'))
 
-        email = request.form.get('email')
-        password = request.form.get('password')
+            email = request.form.get('email')
+            password = request.form.get('password')
 
-        user_data = users_collection.find_one({"email": email})
+            if not email or not password:
+                flash('Please fill out all fields.', 'error')
+                return redirect(url_for('login'))
 
-        if user_data and bcrypt.check_password_hash(user_data['password'], password):
-            user = User(user_data['_id'], user_data['username'], user_data['email'])
-            login_user(user)
-            flash('Logged in successfully!', 'success')
-            return redirect(url_for('landing'))
-        else:
-            flash('Login Unsuccessful. Please check email and password.', 'error')
+            user_data = users_collection.find_one({"email": email})
+
+            if user_data and bcrypt.check_password_hash(user_data['password'], password):
+                user = User(user_data['_id'], user_data['username'], user_data['email'])
+                login_user(user)
+                flash('Logged in successfully!', 'success')
+                return redirect(url_for('landing'))
+            else:
+                flash('Login Unsuccessful. Please check email and password.', 'error')
+                return redirect(url_for('login'))
+        except Exception as e:
+            print(f"Error during login: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('An unexpected error occurred during login. Please try again.', 'error')
             return redirect(url_for('login'))
     
     return render_template('login.html', mode='login')
