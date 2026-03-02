@@ -23,3 +23,6 @@ share/python-wheels/
 *.egg
 uploads/
 *.csv
+*.bak
+*.bak2
+model_cache/

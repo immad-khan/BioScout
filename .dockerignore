@@ -18,6 +18,10 @@ coverage.xml
 .git
 .mypy_cache
 .pytest_cache
+model_cache/
+uploads/
+*.bak
+*.bak2
 .hypotheses
 model_cache/
 uploads/
