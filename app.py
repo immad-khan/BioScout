@@ -78,6 +78,14 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 app.config['MAIL_DEFAULT_SENDER'] = (os.environ.get("EMAIL_FROM_NAME"), os.environ.get("EMAIL_HOST_USER"))
 
+# Handle Port 465 (SSL) vs Port 587 (TLS) automatically
+if app.config.get('MAIL_PORT') == 465:
+    app.config['MAIL_USE_SSL'] = True
+    app.config['MAIL_USE_TLS'] = False
+else:
+    app.config['MAIL_USE_SSL'] = False
+    app.config['MAIL_USE_TLS'] = True
+
 mail = Mail(app)
 
 # --- Authentication Setup ---
