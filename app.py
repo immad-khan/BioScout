@@ -123,30 +123,31 @@ else:
 # --- Global AI Model Loading (for image classification) ---
 processor = None
 model = None
-torch = None # Initialize as None
+torch_lib = None # renamed to avoid conflict
 AI_MODEL_NAME = "microsoft/resnet-50"
 AI_CACHE_DIR = "./model_cache"  # Local cache directory
 
-try:
-    print("Loading AI image classification model...")
-    # Lazy import to prevent crashes if libraries are missing/broken
-    import torch
-    from transformers import AutoImageProcessor, AutoModelForImageClassification
+def get_ai_model():
+    """Lazily load the AI model only when needed to save memory on startup."""
+    global processor, model, torch_lib
+    if model is not None and processor is not None:
+        return processor, model, torch_lib
     
-    # Ensure cache directory exists
-    os.makedirs(AI_CACHE_DIR, exist_ok=True)
-    
-    # Load model with local caching (cache_dir parameter)
-    print(f"Loading '{AI_MODEL_NAME}' (using cache at {AI_CACHE_DIR})...")
-    processor = AutoImageProcessor.from_pretrained(AI_MODEL_NAME, cache_dir=AI_CACHE_DIR)
-    model = AutoModelForImageClassification.from_pretrained(AI_MODEL_NAME, cache_dir=AI_CACHE_DIR)
-    print("AI image classification model loaded successfully!")
-except Exception as e:
-    print(f"Error loading AI image classification model or libraries: {e}")
-    print("Proceeding without image classification AI (will use demo prediction for uploads).")
-    processor = None
-    model = None
-    torch = None # Ensure it stays None if import failed
+    try:
+        print("Loading AI image classification model (lazy)...")
+        import torch
+        from transformers import AutoImageProcessor, AutoModelForImageClassification
+        
+        torch_lib = torch
+        os.makedirs(AI_CACHE_DIR, exist_ok=True)
+        
+        processor = AutoImageProcessor.from_pretrained(AI_MODEL_NAME, cache_dir=AI_CACHE_DIR)
+        model = AutoModelForImageClassification.from_pretrained(AI_MODEL_NAME, cache_dir=AI_CACHE_DIR)
+        print("AI image classification model loaded successfully!")
+        return processor, model, torch_lib
+    except Exception as e:
+        print(f"Error loading AI image classification model: {e}")
+        return None, None, None
 
 # --- Knowledge Base / RAG Logic ---
 import re
@@ -859,17 +860,21 @@ def upload_file():
 
             # --- AI Image Classification Logic ---
             try:
-                if model and processor:
+                # Use the lazy loader to get the model only when a user uploads
+                curr_processor, curr_model, curr_torch = get_ai_model()
+
+                if curr_model and curr_processor:
                     image = Image.open(image_path_absolute).convert('RGB')
-                    inputs = processor(images=image, return_tensors="pt")
-                    outputs = model(**inputs)
+                    inputs = curr_processor(images=image, return_tensors="pt")
+                    outputs = curr_model(**inputs)
                     logits = outputs.logits
 
-                    probabilities = torch.nn.functional.softmax(logits, dim=1)[0]
-                    top5_prob, top5_indices = torch.topk(probabilities, 5)
+                    # Use curr_torch (lazy loaded) for processing
+                    probabilities = curr_torch.nn.functional.softmax(logits, dim=1)[0]
+                    top5_prob, top5_indices = curr_torch.topk(probabilities, 5)
                     predicted_species_list = []
                     for i in range(top5_indices.size(0)):
-                        label = model.config.id2label[top5_indices[i].item()]
+                        label = curr_model.config.id2label[top5_indices[i].item()]
                         prob = top5_prob[i].item() * 100
                         predicted_species_list.append(f"{label} ({prob:.2f}%)")
 

@@ -27,5 +27,5 @@ COPY . /app/
 # Expose port 5000 (Flask default) or use the PORT environment variable
 EXPOSE 5000
 
-# Run the application using Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# Run the application using Gunicorn (Optimized for low memory)
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--preload", "app:app"]
