@@ -146,11 +146,22 @@ def get_ai_model():
         import torch
         from transformers import AutoImageProcessor, AutoModelForImageClassification
         
+        # Use HF_TOKEN if available in environment
+        hf_token = os.getenv("HF_TOKEN")
+        
         torch_lib = torch
         os.makedirs(AI_CACHE_DIR, exist_ok=True)
         
-        processor = AutoImageProcessor.from_pretrained(AI_MODEL_NAME, cache_dir=AI_CACHE_DIR)
-        model = AutoModelForImageClassification.from_pretrained(AI_MODEL_NAME, cache_dir=AI_CACHE_DIR)
+        processor = AutoImageProcessor.from_pretrained(
+            AI_MODEL_NAME, 
+            cache_dir=AI_CACHE_DIR,
+            token=hf_token
+        )
+        model = AutoModelForImageClassification.from_pretrained(
+            AI_MODEL_NAME, 
+            cache_dir=AI_CACHE_DIR,
+            token=hf_token
+        )
         print("AI image classification model loaded successfully!")
         return processor, model, torch_lib
     except Exception as e:
