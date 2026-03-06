@@ -28,6 +28,22 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            scroll-behavior: smooth;
+        }
+
+        /* Custom Scrollbar for smoother feel */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050505;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1b5e20;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2ecc71;
         }
 
         /* Dark Overlay for better text contrast */
