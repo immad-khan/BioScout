@@ -23,6 +23,10 @@ from pymongo import MongoClient
 
 # --- AI Model Specific Imports (for image classification) ---
 from PIL import Image
+try:
+    import pillow_avif
+except ImportError:
+    pass
 # We will import torch and transformers lazily/safely below to prevent app crashes
 # if they are not installed or have version conflicts.
 
