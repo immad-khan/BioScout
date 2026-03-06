@@ -702,6 +702,7 @@ def landing():
     return render_template('landing.html')
 
 @app.route('/')
+@login_required
 def serve_form():
     """Serves the main observation form page."""
     return render_template('index.html')
