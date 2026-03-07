@@ -889,8 +889,16 @@ def upload_file():
 
                 if curr_model and curr_processor:
                     image = Image.open(image_path_absolute).convert('RGB')
+                    # Resize large images to prevent memory issues
+                    max_size = 512
+                    if image.width > max_size or image.height > max_size:
+                        image.thumbnail((max_size, max_size), Image.LANCZOS)
+                    
                     inputs = curr_processor(images=image, return_tensors="pt")
-                    outputs = curr_model(**inputs)
+                    
+                    # Run inference without gradient tracking to save memory
+                    with curr_torch.no_grad():
+                        outputs = curr_model(**inputs)
                     logits = outputs.logits
 
                     # Use curr_torch (lazy loaded) for processing
@@ -904,6 +912,11 @@ def upload_file():
 
                     predicted_species = "; ".join(predicted_species_list)
                     print(f"Top 5 AI predictions: {predicted_species}")
+                    
+                    # Free memory immediately after inference
+                    del inputs, outputs, logits, probabilities
+                    if hasattr(curr_torch, 'cuda') and curr_torch.cuda.is_available():
+                        curr_torch.cuda.empty_cache()
 
                     # ── Nature-image validation ──
                     if not is_nature_image(predicted_species):
@@ -915,6 +928,8 @@ def upload_file():
                     predicted_species = "Cheetah (Demo Prediction - AI Model Not Loaded)"
             except Exception as e:
                 print(f"Image classification error: {e}")
+                import traceback
+                traceback.print_exc()
                 predicted_species = "AI Prediction Failed (Error during classification)"
         else:
             predicted_species = "No image provided for prediction"

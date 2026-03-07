@@ -487,10 +487,17 @@
         const formData = new FormData(this);
 
         try {
+            // Set a 2-minute timeout for the upload (AI model loading can take time)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
+
             const response = await fetch('/upload', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             loadingIndicator.style.display = 'none';
 
@@ -520,7 +527,13 @@
             }
         } catch (error) {
             loadingIndicator.style.display = 'none';
-            document.getElementById('errorNotification').style.display = 'block';
+            const errorNotification = document.getElementById('errorNotification');
+            if (error.name === 'AbortError') {
+                errorNotification.textContent = 'Upload timed out. The server may be busy loading the AI model. Please try again.';
+            } else {
+                errorNotification.textContent = 'Connection lost to the server. Please refresh the page and try again.';
+            }
+            errorNotification.style.display = 'block';
             console.error('Error submitting form:', error);
         }
     });
