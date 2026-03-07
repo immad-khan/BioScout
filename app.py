@@ -1213,4 +1213,22 @@ You have access to two authoritative sources that you must use to answer questio
 
 # --- App Run ---
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import sys
+    # Exclude torch/transformers directories from the watchdog reloader
+    # to prevent the server from restarting when the AI model is lazy-loaded
+    extra_dirs = []
+    exclude_patterns = [
+        "*.pyc",
+        "*/torch/*",
+        "*/transformers/*",
+        "*/safetensors/*",
+        "*/huggingface_hub/*",
+        "*/model_cache/*",
+    ]
+    app.run(
+        debug=True,
+        host='0.0.0.0',
+        port=5000,
+        use_reloader=True,
+        exclude_patterns=exclude_patterns
+    )
