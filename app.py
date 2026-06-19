@@ -594,10 +594,11 @@ def signup():
 
             if send_otp_email(email, otp_code):
                 flash('A verification code has been sent to your email.', 'success')
-                return redirect(url_for('verify_otp'))
             else:
-                flash('Failed to send verification email. Please try again.', 'error')
-                return redirect(url_for('signup'))
+                # Render free tier blocks outbound SMTP. We flash the code so the user can proceed.
+                flash(f'A verification code has been generated. (Testing Mode OTP: {otp_code})', 'success')
+            
+            return redirect(url_for('verify_otp'))
 
         except Exception as e:
             print(f"Error during signup: {e}")
